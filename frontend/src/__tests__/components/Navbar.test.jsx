@@ -1,13 +1,36 @@
-import { render, screen } from '@testing-library/react'
-import Navbar from '@/components/Navbar'
+import { render, screen } from "@testing-library/react";
+import Navbar from "@/components/Navbar";
+import "@testing-library/jest-dom";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 
-describe('Navbar', () => {
-  it('renders without crashing', () => {
-    render(<Navbar />)
-    // Add your assertions here based on your Navbar implementation
-    // For example:
-    // expect(screen.getByRole('navigation')).toBeInTheDocument()
-  })
+describe("Navbar Component", () => {
+  test("renders without crashing", () => {
+    render(
+      <MemoryRouter>
+        <Navbar />
+      </MemoryRouter>
+    );
+    expect(screen.getByText("Stockify")).toBeInTheDocument();
+  });
 
-  // Add more test cases as needed
-}) 
+  test("contains navigation links", () => {
+    render(
+      <MemoryRouter>
+        <Navbar />
+      </MemoryRouter>
+    );
+    expect(screen.getByText("Features")).toBeInTheDocument();
+    expect(screen.getByText("About")).toBeInTheDocument();
+  });
+
+  test("renders login and sign-up buttons", () => {
+    render(
+      <MemoryRouter>
+        <Navbar />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole("button", { name: "Login" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign Up" })).toBeInTheDocument();
+  });
+});

@@ -32,3 +32,29 @@ jest.mock('next/navigation', () => ({
     return new URLSearchParams();
   },
 }));
+
+// Mock IntersectionObserver
+class MockIntersectionObserver {
+  constructor(callback) {
+    this.callback = callback;
+  }
+
+  observe() {
+    // Trigger the callback with mock entries
+    this.callback([{
+      isIntersecting: true,
+      target: {},
+      intersectionRatio: 1
+    }]);
+  }
+
+  unobserve() {}
+  disconnect() {}
+}
+
+global.IntersectionObserver = MockIntersectionObserver;
+
+// Mock TextEncoder/TextDecoder
+const { TextEncoder, TextDecoder } = require('util');
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
