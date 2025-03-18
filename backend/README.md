@@ -15,6 +15,11 @@ source venv/bin/activate  # On Windows: .\venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+3. Upgrade the database:
+```bash
+flask db upgrade
+```
+
 ## Development
 
 The application uses environment variables for configuration. These are stored in `.flaskenv`:
@@ -48,3 +53,9 @@ PYTHONPATH=. pytest --cov=app tests/
 ## API Endpoints
 
 - `GET /`: Returns a hello world message 
+
+# Run unit and integration tests
+npm test
+
+# Run end-to-end tests
+npx playwright test 

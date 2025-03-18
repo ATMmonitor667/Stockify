@@ -32,3 +32,7 @@ jest.mock('next/navigation', () => ({
     return new URLSearchParams();
   },
 }));
+
+// Mock TextEncoder/TextDecoder
+global.TextEncoder = require('util').TextEncoder;
+global.TextDecoder = require('util').TextDecoder;
