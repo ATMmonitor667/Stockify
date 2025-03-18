@@ -30,9 +30,9 @@ jobs:
 
     - name: Run backend tests
       run: |
-        pytest test_signup.py
-        pytest test_integration.py
+        pytest unitTest.py
+        pytest integrationTest.py
 
     - name: Run frontend tests
       run: |
-        npx playwright test test_signup_e2e.js
+        npx playwright test endtoend.test.js
