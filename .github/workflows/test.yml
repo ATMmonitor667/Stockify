@@ -1,10 +1,10 @@
-name: Test Suite
+name: Run Tests
 
 on:
-  push:
-    branches: [ main, test-engineering ]
   pull_request:
     branches: [ main ]
+  push:
+    branches: [ main, test-engineering ]
 
 jobs:
   frontend-tests:
@@ -15,6 +15,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    
     - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
@@ -25,8 +26,14 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
-    - name: Run tests and collect coverage
+    - name: Install Playwright browsers
+      run: npx playwright install --with-deps chromium
+    
+    - name: Run unit tests and collect coverage
       run: npm test -- --coverage
+      
+    - name: Run E2E tests
+      run: npm run test:e2e -- --project=chromium
 
   backend-tests:
     runs-on: ubuntu-latest
@@ -36,6 +43,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
