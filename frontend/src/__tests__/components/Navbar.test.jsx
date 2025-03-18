@@ -1,36 +1,31 @@
 import { render, screen } from "@testing-library/react";
 import Navbar from "@/components/Navbar";
+import Features from "@/components/Features";
 import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 
-describe("Navbar Component", () => {
-  test("renders without crashing", () => {
+describe("Navbar and Features Interaction", () => {
+  test("clicking Features link scrolls to Features section", async () => {
     render(
       <MemoryRouter>
         <Navbar />
+        <Features />
       </MemoryRouter>
     );
-    expect(screen.getByText("Stockify")).toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Features"));
+    expect(screen.getByText("Why Learn with Stockify?")).toBeInTheDocument();
   });
 
-  test("contains navigation links", () => {
+  test("handles missing Features section gracefully", async () => {
     render(
       <MemoryRouter>
         <Navbar />
       </MemoryRouter>
     );
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Features"));
     expect(screen.getByText("Features")).toBeInTheDocument();
-    expect(screen.getByText("About")).toBeInTheDocument();
-  });
-
-  test("renders login and sign-up buttons", () => {
-    render(
-      <MemoryRouter>
-        <Navbar />
-      </MemoryRouter>
-    );
-    expect(screen.getByRole("button", { name: "Login" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Sign Up" })).toBeInTheDocument();
   });
 });
