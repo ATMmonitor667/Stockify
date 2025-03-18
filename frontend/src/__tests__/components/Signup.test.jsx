@@ -92,4 +92,76 @@ describe('Signup Component', () => {
     // Check that fetch was not called
     expect(global.fetch).not.toHaveBeenCalled();
   });
+
+  // NEW TEST 6: Network error handling
+  it('handles network errors gracefully', async () => {
+    // Mock network error
+    global.fetch.mockRejectedValueOnce(new Error('Network error'));
+
+    render(<Signup />);
+    
+    await userEvent.type(screen.getByPlaceholderText('Username'), 'testuser');
+    await userEvent.type(screen.getByPlaceholderText('Password'), 'testpass');
+    
+    fireEvent.click(screen.getByRole('button', { name: /sign up/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Network error')).toBeInTheDocument();
+    });
+  });
+
+  // NEW TEST 7: API error without specific message
+  it('handles API errors without specific message', async () => {
+    // Mock API error without specific message
+    global.fetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({})
+    });
+
+    render(<Signup />);
+    
+    await userEvent.type(screen.getByPlaceholderText('Username'), 'testuser');
+    await userEvent.type(screen.getByPlaceholderText('Password'), 'testpass');
+    
+    fireEvent.click(screen.getByRole('button', { name: /sign up/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+    });
+  });
+
+  // NEW TEST 8: Clear error message on new submission
+  it('clears error message when form is submitted again', async () => {
+    // First, trigger an error
+    global.fetch.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ error: 'Initial error' })
+    });
+
+    render(<Signup />);
+    
+    await userEvent.type(screen.getByPlaceholderText('Username'), 'testuser');
+    await userEvent.type(screen.getByPlaceholderText('Password'), 'testpass');
+    
+    fireEvent.click(screen.getByRole('button', { name: /sign up/i }));
+
+    // Wait for error message to appear
+    await waitFor(() => {
+      expect(screen.getByText('Initial error')).toBeInTheDocument();
+    });
+
+    // Mock successful response for second attempt
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ message: 'Success' })
+    });
+
+    // Submit form again
+    fireEvent.click(screen.getByRole('button', { name: /sign up/i }));
+
+    // Verify error message is cleared
+    await waitFor(() => {
+      expect(screen.queryByText('Initial error')).not.toBeInTheDocument();
+    });
+  });
 }); 

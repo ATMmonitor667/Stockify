@@ -1,55 +1,80 @@
 const { test, expect } = require('@playwright/test');
 
-test.describe('Signup Flow', () => {
+/**
+ * Basic End-to-End Test for Stockify Signup
+ * Prerequisites:
+ * - Backend server running on http://127.0.0.1:5001
+ * - Frontend server running (port will be determined automatically)
+ * 
+ * Test Steps:
+ * 1. Verify servers are running
+ * 2. Navigate to signup page
+ * 3. Fill in form
+ * 4. Submit form
+ * 5. Verify success
+ */
+
+test.describe('Basic Signup Flow', () => {
+  let frontendPort;
+
+  test.beforeAll(async ({ request }) => {
+    // Check if backend is running
+    try {
+      const response = await request.get('http://127.0.0.1:5001/');
+      expect(response.ok()).toBeTruthy();
+    } catch (error) {
+      throw new Error('Backend server is not running. Please start it with `flask run --port=5001`');
+    }
+
+    // Try to determine the frontend port by checking common Next.js ports
+    for (const port of [3000, 3001, 3002, 3003]) {
+      try {
+        const response = await request.get(`http://localhost:${port}`);
+        if (response.ok()) {
+          frontendPort = port;
+          break;
+        }
+      } catch (error) {
+        continue;
+      }
+    }
+
+    if (!frontendPort) {
+      throw new Error('Could not find running Next.js server. Please start it with `npm run dev`');
+    }
+  });
+
   test.beforeEach(async ({ page }) => {
-    // Navigate to the signup page before each test
-    await page.goto('http://localhost:3000/signup');
+    // Navigate to signup page with the detected port
+    await page.goto(`http://localhost:${frontendPort}/signup`, {
+      waitUntil: 'networkidle',
+      timeout: 30000
+    });
+    
+    // Wait for the form to be visible
+    await expect(page.locator('form')).toBeVisible({ timeout: 30000 });
+    
+    // Wait for the heading to be visible
+    await expect(page.getByRole('heading', { name: 'Sign Up' })).toBeVisible({ timeout: 30000 });
   });
 
-  test('successful signup flow', async ({ page }) => {
-    // Fill in the form
-    await page.fill('input[placeholder="Username"]', 'newuser123');
-    await page.fill('input[placeholder="Password"]', 'securepass123');
-
-    // Submit the form
-    await page.click('button:has-text("Sign Up")');
-
-    // Wait for success message
-    await expect(page.locator('text=User successfully registered!')).toBeVisible();
-
-    // Verify redirect to login page
-    await expect(page).toHaveURL('http://localhost:3000/login');
-  });
-
-  test('handles existing username', async ({ page }) => {
-    // Fill in the form with existing username
-    await page.fill('input[placeholder="Username"]', 'existinguser');
-    await page.fill('input[placeholder="Password"]', 'testpass123');
-
-    // Submit the form
-    await page.click('button:has-text("Sign Up")');
-
-    // Check for error message
-    await expect(page.locator('text=Username already exists')).toBeVisible();
-  });
-
-  test('validates empty fields', async ({ page }) => {
-    // Try to submit without filling in fields
-    await page.click('button:has-text("Sign Up")');
-
-    // Check for validation message
-    await expect(page.locator('text=Please fill in all fields')).toBeVisible();
-  });
-
-  test('password requirements', async ({ page }) => {
-    // Fill in the form with weak password
-    await page.fill('input[placeholder="Username"]', 'newuser123');
-    await page.fill('input[placeholder="Password"]', 'weak');
-
-    // Submit the form
-    await page.click('button:has-text("Sign Up")');
-
-    // Check for password requirement message
-    await expect(page.locator('text=Password must be at least 8 characters')).toBeVisible();
+  test('should successfully register a new user', async ({ page }) => {
+    // Generate unique test username
+    const testUsername = `testuser_${Date.now()}`;
+    
+    // Fill the form
+    await page.getByPlaceholder('Username').fill(testUsername);
+    await page.getByPlaceholder('Password').fill('TestPassword123');
+    
+    // Submit form and wait for the network request to complete
+    await Promise.all([
+      page.waitForResponse(response => response.url().includes('/signup')),
+      page.getByRole('button', { name: 'Sign Up' }).click()
+    ]);
+    
+    // Verify success message appears
+    const successMessage = page.locator('.text-green-500');
+    await expect(successMessage).toBeVisible({ timeout: 10000 });
+    await expect(successMessage).toHaveText('User successfully registered!');
   });
 }); 

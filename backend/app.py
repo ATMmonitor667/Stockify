@@ -1,28 +1,42 @@
 from flask import Flask, jsonify
 from flask_migrate import Migrate
 from flask_cors import CORS
-from extensions import db  # Import db from extensions.py
+from extensions import db  # Remove relative import
 
-# Initialize the Flask app
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'  
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False 
+def create_app(test_config=None):
+    # Initialize the Flask app
+    app = Flask(__name__)
+    
+    # Enable CORS for all routes
+    CORS(app, supports_credentials=True)
+    
+    if test_config is None:
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
+    else:
+        app.config.update(test_config)
+    
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False 
 
-# Initialize database
-db.init_app(app) 
-migrate = Migrate(app, db)
-CORS(app)
+    # Initialize database
+    db.init_app(app)
+    migrate = Migrate(app, db)
 
-# ROUTES
+    # Register blueprints
+    from routes.user_routes import user_routes  # Remove relative import
+    app.register_blueprint(user_routes)
 
-#uesr routes
-from routes.user_routes import user_routes
-app.register_blueprint(user_routes)
+    @app.route('/')
+    def home():
+        return jsonify({"message": "working"})
 
+    return app
 
-@app.route('/')
-def home():
-    return jsonify({"message": "working"})
+# Create the app instance
+app = create_app()
+
+# Create tables
+with app.app_context():
+    db.create_all()
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5001)

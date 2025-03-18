@@ -1,3 +1,3 @@
-FLASK_APP=src.app:app
+FLASK_APP=app.py
 FLASK_ENV=development
 FLASK_DEBUG=1 
