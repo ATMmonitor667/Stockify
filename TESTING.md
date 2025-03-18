@@ -38,7 +38,7 @@ cd frontend
 npm test
 
 # Run with coverage
-npm test -- --coverage
+rage
 ```
 
 ### Backend Tests

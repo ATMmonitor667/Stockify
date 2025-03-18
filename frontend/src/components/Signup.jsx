@@ -12,7 +12,7 @@ const Signup = () => {
     setMessage('');
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/signup', {
+      const response = await fetch('http://127.0.0.1:5001/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -26,6 +26,8 @@ const Signup = () => {
       }
 
       setMessage('User successfully registered!');
+      setUsername('');
+      setPassword('');
     } catch (err) {
       setError(err.message);
     }
