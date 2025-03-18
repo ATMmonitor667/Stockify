@@ -1,0 +1,38 @@
+name: Run Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:5.7
+        options: --health-cmd="mysqladmin ping --silent" --health-timeout=5s --health-retries=3
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+        npm install
+
+    - name: Run backend tests
+      run: |
+        pytest test_signup.py
+        pytest test_integration.py
+
+    - name: Run frontend tests
+      run: |
+        npx playwright test test_signup_e2e.js
