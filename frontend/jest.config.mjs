@@ -14,6 +14,7 @@ const config = {
     '^@/app/(.*)$': '<rootDir>/src/app/$1'
   },
   testMatch: ['**/__tests__/**/*.test.js', '**/__tests__/**/*.test.jsx'],
+  testPathIgnorePatterns: ['/node_modules/', '/e2e/'],
   collectCoverage: true,
   coverageDirectory: 'coverage',
 }
