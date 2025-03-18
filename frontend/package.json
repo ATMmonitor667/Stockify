@@ -7,24 +7,22 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test:e2e": "playwright test",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "test:all": "npm test && npm run test:e2e"
   },
   "dependencies": {
     "framer-motion": "^12.5.0",
     "next": "15.2.2",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
-    "@testing-library/jest-dom": "^6.4.2",
-    "@testing-library/react": "^14.2.1",
     "eslint": "^9",
     "eslint-config-next": "15.2.2",
-    "jest": "^29.7.0",
-    "jest-environment-jsdom": "^29.7.0",
     "tailwindcss": "^4"
   }
 }
