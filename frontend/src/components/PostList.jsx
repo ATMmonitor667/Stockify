@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { supabase } from '@/config/supabaseClient';
 import PostCard from './PostCard';
 
 const PostList = ({ onFollow, user }) => {
@@ -15,40 +16,18 @@ const PostList = ({ onFollow, user }) => {
   }, []);
 
   const fetchPosts = async () => {
-    const now = Date.now();
-    if (now - lastFetchTime.current < CACHE_DURATION) {
-      return; // Skip fetch if within cache duration
-    }
-
     try {
       setLoading(true);
-      console.log('Fetching posts...');
-      
-      const response = await fetch('/api/posts');
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Network response was not ok: ${response.status} ${response.statusText}. Details: ${errorText}`);
-      }
-      
-      const data = await response.json();
-      console.log('Fetched posts data:', data);
-      
-      if (!Array.isArray(data)) {
-        throw new Error('Invalid data format: expected an array of posts');
-      }
-      
-      setPosts(data);
-      lastFetchTime.current = now;
-      setError(null); // Clear any previous errors
+      const { data, error } = await supabase
+        .from('posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPosts(data || []);
     } catch (err) {
       const errorMessage = `Failed to fetch posts: ${err.message}`;
       setError(errorMessage);
-      console.error('Error fetching posts:', {
-        message: err.message,
-        stack: err.stack,
-        timestamp: new Date().toISOString()
-      });
     } finally {
       setLoading(false);
     }
@@ -82,6 +61,14 @@ const PostList = ({ onFollow, user }) => {
     );
   }
 
+  if (posts.length === 0) {
+    return (
+      <div className="text-center text-gray-500 py-8">
+        No posts yet. Be the first to post!
+      </div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -97,11 +84,6 @@ const PostList = ({ onFollow, user }) => {
           showFollowButton={true} // Always show follow button
         />
       ))}
-      {posts.length === 0 && (
-        <div className="text-center text-gray-500 py-8">
-          No posts yet. Be the first to post!
-        </div>
-      )}
     </motion.div>
   );
 };
