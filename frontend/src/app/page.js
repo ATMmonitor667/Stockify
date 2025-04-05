@@ -8,22 +8,10 @@ import Features from '@/components/Features';
 import Footer from '@/components/Footer';
 
 export default function Home() {
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
-    };
-    fetchUser();
-  }, []);
-
   return (
     <main className="min-h-screen bg-black">
-      <Navbar user={user} />
-      <Hero user={user} />
+      <Hero />
       <Features />
-      <Footer />
     </main>
   );
 }

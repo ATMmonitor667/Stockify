@@ -3,8 +3,10 @@
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
+import { globalUser } from '@/config/UserContext';
 
-const Hero = ({ user }) => {
+const Hero = () => {
+  const user = globalUser();
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gray-900">
       {/* Full-width background image */}
