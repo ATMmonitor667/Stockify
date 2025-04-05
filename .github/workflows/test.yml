@@ -47,11 +47,6 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    - name: Setup Supabase CLI
-      run: |
-        npm install -g supabase
-        supabase --version
-
     - name: Run Supabase tests
       env:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -60,6 +55,6 @@ jobs:
         # Test Supabase connection
         npm run test:supabase
         # Test database migrations
-        supabase db reset
+        npx supabase db reset
         # Test database functions
-        supabase functions test 
+        npx supabase functions test 

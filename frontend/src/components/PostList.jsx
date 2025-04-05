@@ -23,17 +23,32 @@ const PostList = ({ onFollow, user }) => {
     try {
       setLoading(true);
       console.log('Fetching posts...');
+      
       const response = await fetch('/api/posts');
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch posts');
+        const errorText = await response.text();
+        throw new Error(`Network response was not ok: ${response.status} ${response.statusText}. Details: ${errorText}`);
       }
+      
       const data = await response.json();
       console.log('Fetched posts data:', data);
+      
+      if (!Array.isArray(data)) {
+        throw new Error('Invalid data format: expected an array of posts');
+      }
+      
       setPosts(data);
       lastFetchTime.current = now;
+      setError(null); // Clear any previous errors
     } catch (err) {
-      setError(err.message);
-      console.error('Error fetching posts:', err);
+      const errorMessage = `Failed to fetch posts: ${err.message}`;
+      setError(errorMessage);
+      console.error('Error fetching posts:', {
+        message: err.message,
+        stack: err.stack,
+        timestamp: new Date().toISOString()
+      });
     } finally {
       setLoading(false);
     }
