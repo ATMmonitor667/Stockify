@@ -3,9 +3,11 @@ import { NextResponse } from 'next/server';
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
 const FINNHUB_BASE_URL = 'https://finnhub.io/api/v1';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = request.nextUrl;
     const endpoint = searchParams.get('endpoint');
     const symbol = searchParams.get('symbol');
     const q = searchParams.get('q');

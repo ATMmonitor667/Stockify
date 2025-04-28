@@ -4,6 +4,7 @@ import { supabase } from '@/config/supabaseClient';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -17,6 +18,7 @@ const Signup = () => {
   const [success, setSuccess] = useState('');
   const router = useRouter();
   const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirectTo') || '/';
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -51,7 +53,7 @@ const Signup = () => {
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `http://localhost:3000/login?redirect=${searchParams.get('redirect') || '/'}`,
+          emailRedirectTo: redirectTo,
         },
       });
 
