@@ -75,7 +75,7 @@ Button.displayName = "Button";
 
 const TRADING_HOURS = {
   START: 9.5, // 9:30 AM EST
-  END: 16,    // 4:00 PM EST
+  END: 22,    // 4:00 PM EST
 };
 
 // Add holiday list (2025 major US market holidays)
