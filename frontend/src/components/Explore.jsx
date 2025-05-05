@@ -110,7 +110,7 @@ const formatNumber = (number) => {
 const formatVolume = (volume) => {
   if (volume === undefined || volume === null) return 'N/A';
   if (volume === 0) return '0';
-  
+
   // Always format in thousands (K)
   const volumeInThousands = volume / 1000;
   return `${volumeInThousands.toFixed(2)}K`;
@@ -206,7 +206,7 @@ const Explore = () => {
           if (portfolioData) {
             const portfolio = {};
             const symbolMap = {};
-            
+
             portfolioData.forEach(item => {
               const symbol = item.stock.tick;
               portfolio[symbol] = {
@@ -216,7 +216,7 @@ const Explore = () => {
               };
               symbolMap[item.stock_id] = symbol;
             });
-            
+
             setUserPortfolio(portfolio);
             setStockSymbolMap(symbolMap);
           }
@@ -236,19 +236,19 @@ const Explore = () => {
       const estHour = now.getUTCHours() - 4; // Convert to EST
       const estMinutes = now.getUTCMinutes();
       const currentTimeInHours = estHour + (estMinutes / 60);
-      
+
       // Check if it's a weekend (0 = Sunday, 6 = Saturday)
       const isWeekend = now.getUTCDay() === 0 || now.getUTCDay() === 6;
-      
+
       // Check if it's a holiday
       const today = now.toISOString().split('T')[0];
       const isHoliday = MARKET_HOLIDAYS.includes(today);
-      
+
       // Market is open only on weekdays, during trading hours, and not on holidays
       setIsMarketOpen(
-        !isWeekend && 
-        !isHoliday && 
-        currentTimeInHours >= TRADING_HOURS.START && 
+        !isWeekend &&
+        !isHoliday &&
+        currentTimeInHours >= TRADING_HOURS.START &&
         currentTimeInHours < TRADING_HOURS.END
       );
     };
@@ -285,11 +285,11 @@ const Explore = () => {
     try {
       // Prepare all symbols to fetch
       const allSymbols = [...FEATURED_STOCKS];
-      
+
       // Add trending stocks that aren't in featured stocks
       TRENDING_STOCKS.filter(symbol => !FEATURED_STOCKS.includes(symbol))
         .forEach(symbol => allSymbols.push(symbol));
-      
+
       // Add selected stock if any
       if (selectedStocks.length > 0) {
         allSymbols.push(...selectedStocks);
@@ -300,7 +300,7 @@ const Explore = () => {
       for (let i = 0; i < allSymbols.length; i += batchSize) {
         const batch = allSymbols.slice(i, i + batchSize);
         await Promise.all(batch.map(symbol => fetchStockData(symbol)));
-        
+
         // Small delay between batches to avoid rate limiting
         if (i + batchSize < allSymbols.length) {
           await new Promise(resolve => setTimeout(resolve, 200));
@@ -321,7 +321,7 @@ const Explore = () => {
         // Load featured stocks first for faster initial render
         const featuredPromises = FEATURED_STOCKS.slice(0, 2).map(symbol => fetchStockData(symbol));
         await Promise.all(featuredPromises);
-        
+
         // Then load the rest in the background
         const remainingStocks = [...FEATURED_STOCKS.slice(2), ...TRENDING_STOCKS];
         const loadRemainingStocks = async () => {
@@ -332,7 +332,7 @@ const Explore = () => {
           }
           setIsLoadingStocks(false);
         };
-        
+
         // Start loading remaining stocks in the background
         loadRemainingStocks();
       } catch (error) {
@@ -341,14 +341,14 @@ const Explore = () => {
     };
 
     loadInitialData();
-    
+
     // Update stocks every minute if market is open
     const interval = setInterval(() => {
       if (isMarketOpen) {
         updateAllStockData();
       }
     }, 60000);
-    
+
     return () => clearInterval(interval);
   }, [isMarketOpen]);
 
@@ -400,13 +400,13 @@ const Explore = () => {
         setSuggestions(searchResults);
         setShowSuggestions(true);
       } else {
-        setSuggestions([{ 
-          symbol: 'No results', 
-          name: 'Try a different search term', 
-          displayName: 'No matching stocks found' 
+        setSuggestions([{
+          symbol: 'No results',
+          name: 'Try a different search term',
+          displayName: 'No matching stocks found'
         }]);
         setShowSuggestions(true);
-        
+
         // Hide "no results" message after 2 seconds
         setTimeout(() => {
           setSuggestions([]);
@@ -415,13 +415,13 @@ const Explore = () => {
       }
     } catch (error) {
       console.error('Error fetching suggestions:', error);
-      setSuggestions([{ 
-        symbol: 'Error', 
-        name: 'Please try again', 
-        displayName: 'Failed to fetch results' 
+      setSuggestions([{
+        symbol: 'Error',
+        name: 'Please try again',
+        displayName: 'Failed to fetch results'
       }]);
       setShowSuggestions(true);
-      
+
       // Hide error message after 2 seconds
       setTimeout(() => {
         setSuggestions([]);
@@ -443,12 +443,12 @@ const Explore = () => {
   const handleInputChange = (e) => {
     const value = e.target.value;
     setSearchQuery(value);
-    
+
     // Clear any existing timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-    
+
     // Only search if we have at least 2 characters
     if (value.trim().length >= 2) {
       debouncedSearch(value);
@@ -463,11 +463,11 @@ const Explore = () => {
     if (suggestion.symbol === 'Loading...' || suggestion.symbol === 'Error' || suggestion.symbol === 'No results') {
       return;
     }
-    
+
     try {
       // Set loading state for this stock
       setLoadingStates(prev => ({ ...prev, [suggestion.symbol]: true }));
-      
+
       const [quote, profile] = await Promise.all([
         getStockQuote(suggestion.symbol),
         getCompanyProfile(suggestion.symbol)
@@ -488,9 +488,9 @@ const Explore = () => {
       setShowSuggestions(false);
 
       // Update selected stocks
-      setSelectedStocks(prevStocks => 
-        prevStocks.includes(suggestion.symbol) 
-          ? prevStocks 
+      setSelectedStocks(prevStocks =>
+        prevStocks.includes(suggestion.symbol)
+          ? prevStocks
           : [suggestion.symbol]
       );
     } catch (error) {
@@ -510,7 +510,7 @@ const Explore = () => {
       setError(null);
       const symbol = searchQuery.toUpperCase();
       const stock = await fetchStockData(symbol);
-      
+
       if (stock) {
         setSearchResult(stock);
         // Add to stockData if not already present
@@ -533,19 +533,19 @@ const Explore = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error('User not authenticated');
-  
+
       const stockInfo = stockData[symbol];
       if (!stockInfo) throw new Error('Stock not found');
-  
+
       const currentPrice = stockInfo.quote.c;
       const tradeCost = currentPrice * quantity;
-  
+
       const { data: stockTableData } = await supabase
         .from('stock')
         .select('id')
         .eq('tick', symbol)
         .maybeSingle();
-  
+
       let stockId;
       if (!stockTableData) {
         const { data: newStock, error: insertError } = await supabase
@@ -557,22 +557,22 @@ const Explore = () => {
           })
           .select('id')
           .single();
-  
+
         if (insertError) throw new Error(`Failed to create stock record: ${insertError.message}`);
         stockId = newStock.id;
       } else {
         stockId = stockTableData.id;
       }
-  
+
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('wallet_amt')
         .eq('user_id', session.user.id)
         .single();
       if (profileError) throw new Error('Failed to fetch user profile');
-  
+
       const currentBalance = profileData.wallet_amt || 0;
-  
+
       const { data: userStockData, error: stockError } = await supabase
         .from('userstock')
         .select('amt_bought, total_spent')
@@ -580,16 +580,16 @@ const Explore = () => {
         .eq('stock_id', stockId)
         .maybeSingle();
       if (stockError) throw new Error(`Failed to fetch current stock holding: ${stockError.message}`);
-  
+
       const currentQuantity = userStockData?.amt_bought || 0;
       const currentTotalSpent = userStockData?.total_spent || 0;
-  
+
       if (type === 'buy' && currentBalance < tradeCost)
         throw new Error(`Insufficient funds. Required: ${formatNumber(tradeCost)}, Available: ${formatNumber(currentBalance)}`);
-  
+
       if (type === 'sell' && currentQuantity < quantity)
         throw new Error(`Insufficient shares. Required: ${quantity}, Available: ${currentQuantity}`);
-  
+
       const newQuantity = type === 'buy' ? currentQuantity + quantity : currentQuantity - quantity;
       let newTotalSpent;
       if (type === 'buy') {
@@ -598,15 +598,15 @@ const Explore = () => {
         const avgCostPerShare = currentTotalSpent / currentQuantity;
         newTotalSpent = currentTotalSpent - (avgCostPerShare * quantity);
       }
-  
+
       const walletAdjustment = type === 'buy' ? -tradeCost : tradeCost;
-  
+
       const { error: walletError } = await supabase
         .from('profiles')
         .update({ wallet_amt: currentBalance + walletAdjustment })
         .eq('user_id', session.user.id);
       if (walletError) throw new Error(`Failed to update wallet balance: ${walletError.message}`);
-  
+
       let tradeError;
       if (newQuantity > 0) {
         const { error } = await supabase
@@ -621,14 +621,14 @@ const Explore = () => {
             ignoreDuplicates: false
           });
         tradeError = error;
-  
+
         if (!userStockData) {
           const { data: currentStock } = await supabase
             .from('stock')
             .select('num_investors')
             .eq('id', stockId)
             .single();
-  
+
           const currentInvestors = currentStock?.num_investors || 0;
           await supabase
             .from('stock')
@@ -642,28 +642,28 @@ const Explore = () => {
           .eq('user_id', session.user.id)
           .eq('stock_id', stockId);
         tradeError = error;
-  
+
         const { data: currentStock } = await supabase
           .from('stock')
           .select('num_investors')
           .eq('id', stockId)
           .single();
-  
+
         const currentInvestors = currentStock?.num_investors || 0;
         const newInvestors = Math.max(0, currentInvestors - 1);
-  
+
         await supabase
           .from('stock')
           .update({ num_investors: newInvestors })
           .eq('id', stockId);
       }
-  
+
       if (tradeError) {
         await supabase
           .from('profiles')
           .update({ wallet_amt: currentBalance })
           .eq('user_id', session.user.id);
-  
+
         throw new Error(`Failed to execute trade: ${tradeError.message}`);
       }
 
@@ -678,17 +678,17 @@ const Explore = () => {
           total_amount: tradeCost
         });
       if (transactionError) console.error('Failed to log transaction:', transactionError.message);
-  
+
       const { data: updatedProfile, error: updateError } = await supabase
         .from('profiles')
         .select('wallet_amt')
         .eq('user_id', session.user.id)
         .single();
-  
+
       if (!updateError) {
         setUserBalance(updatedProfile.wallet_amt);
       }
-  
+
       if (newQuantity > 0) {
         setUserPortfolio(prev => ({
           ...prev,
@@ -704,18 +704,18 @@ const Explore = () => {
           return newPortfolio;
         });
       }
-  
+
     } catch (error) {
       throw error.message || 'Failed to execute trade';
     }
   };
-  
+
 
   // Optimize the stock card rendering
   const renderStockCard = (stock, symbol) => {
     if (!stock || !stock.profile || !stock.quote) {
       return (
-        <Card 
+        <Card
           key={`loading-${symbol}`}
           className="p-4 bg-white dark:bg-gray-800 animate-pulse"
         >
@@ -724,16 +724,15 @@ const Explore = () => {
         </Card>
       );
     }
-
     const handleCardClick = (e) => {
       // Stop event propagation to prevent click outside handler from firing
       e.stopPropagation();
-      
+
       // Only update selectedStocks if this is a search result card
       if (selectedStocks.includes(symbol)) {
         setSelectedStocks([symbol]);
       }
-      
+
       // Only show trade modal if market is open
       if (isMarketOpen) {
         setShowTradeModal(true);
@@ -741,7 +740,7 @@ const Explore = () => {
     };
 
     return (
-      <Card 
+      <Card
         key={stock.profile.ticker}
         className={`p-4 bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-blue-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-300 shadow-md ${isMarketOpen ? 'cursor-pointer' : ''}`}
         onClick={handleCardClick}
@@ -775,10 +774,10 @@ const Explore = () => {
     const avgCostBasis = position.totalSpent / quantity;
     const totalGainLoss = (stock.quote.c - avgCostBasis) * quantity;
     const percentageChange = ((stock.quote.c - avgCostBasis) / avgCostBasis) * 100;
-    
+
     return (
-      <Card 
-        key={symbol} 
+      <Card
+        key={symbol}
         className="p-4 bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-blue-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-300 shadow-md cursor-pointer"
         onClick={() => {
           if (isMarketOpen) {
@@ -798,7 +797,7 @@ const Explore = () => {
               <p className="text-sm text-gray-600 dark:text-gray-400">Current: {formatNumber(stock.quote.c)}</p>
             </div>
           </div>
-          
+
           <div className="border-t border-gray-100 dark:border-gray-700 pt-2 mt-1">
             <div className="flex justify-between items-center">
               <p className="text-sm text-gray-600 dark:text-gray-400">Avg Cost: {formatNumber(avgCostBasis)}</p>
@@ -869,8 +868,8 @@ const Explore = () => {
                       </div>
                     )}
                   </div>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={isLoading}
                     className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
@@ -936,4 +935,4 @@ const Explore = () => {
   );
 };
 
-export default Explore; 
+export default Explore;
