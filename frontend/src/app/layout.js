@@ -1,6 +1,8 @@
+'use client';
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Layout from "@/components/Layout";
+// import ChatBot from '@/components/StockUI/ChatBot';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -12,14 +14,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata = {
-  title: {
-    template: '%s | Stockify',
-    default: 'Stockify - Your Stock Trading Platform'
-  },
-  description: "A modern platform for stock trading and market analysis",
-};
-
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
@@ -28,8 +22,9 @@ export default function RootLayout({ children }) {
         suppressHydrationWarning
       >
         <Layout>
-        {children}
+          {children}
         </Layout>
+        {/* <ChatBot /> */}
       </body>
     </html>
   );

@@ -51,6 +51,13 @@ const Navbar = () => {
                 >
                   News
                 </Link>
+                <Link
+                  href="/ai-chat"
+                  className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 flex items-center space-x-2"
+                >
+                  <span>🤖</span>
+                  <span>AI Chat</span>
+                </Link>
                 <Link href="/profile" className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
                   Profile
                 </Link>
@@ -89,11 +96,11 @@ const Navbar = () => {
                   Posts
                 </Link>
                 <Link
-                  href="#ai-help"
+                  href="/ai-chat"
                   className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 flex items-center space-x-2"
                 >
                   <span>🤖</span>
-                  <span>AI Help</span>
+                  <span>AI Chat</span>
                 </Link>
               </div>
 

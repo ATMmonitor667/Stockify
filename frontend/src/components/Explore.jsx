@@ -13,6 +13,7 @@ import {
   searchStocks,
 } from "@/config/finnhubClient";
 import { debounce } from "lodash";
+import { useRouter } from 'next/navigation';
 
 // UI Components
 const Card = React.forwardRef(({ className, ...props }, ref) => (
@@ -138,6 +139,7 @@ const createStockData = (data, source) => ({
 });
 
 const Explore = () => {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [trendingStocks, setTrendingStocks] = useState([]);
   const [featuredStocks, setFeaturedStocks] = useState([]);
@@ -1055,6 +1057,10 @@ const Explore = () => {
     }
   };
 
+  const handleStockClick = (symbol) => {
+    router.push(`/stock/${symbol}`);
+  };
+
   // Optimize the stock card rendering
   const renderStockCard = (stock, symbol) => {
     if (!stock || !stock.profile || !stock.quote) {
@@ -1073,15 +1079,8 @@ const Explore = () => {
       // Stop event propagation to prevent click outside handler from firing
       e.stopPropagation();
 
-      // Only update selectedStocks if this is a search result card
-      if (selectedStocks.includes(symbol)) {
-        setSelectedStocks([symbol]);
-      }
-
-      // Only show trade modal if market is open
-      if (isMarketOpen) {
-        setShowTradeModal(true);
-      }
+      // Navigate to stock page
+      handleStockClick(symbol);
     };
 
     // Calculate daily change in dollar value
@@ -1092,9 +1091,7 @@ const Explore = () => {
     return (
       <Card
         key={stock.profile.ticker}
-        className={`overflow-hidden bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-blue-500 hover:shadow-lg transition-all duration-300 ${
-          isMarketOpen ? "cursor-pointer" : ""
-        }`}
+        className={`overflow-hidden bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-blue-500 hover:shadow-lg transition-all duration-300 cursor-pointer`}
         onClick={handleCardClick}
       >
         <div className="relative">
@@ -1260,12 +1257,7 @@ const Explore = () => {
       <Card
         key={symbol}
         className="overflow-hidden bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-blue-500 hover:shadow-lg transition-all duration-300 cursor-pointer"
-        onClick={() => {
-          if (isMarketOpen) {
-            setSelectedStocks([symbol]);
-            setShowTradeModal(true);
-          }
-        }}
+        onClick={() => handleStockClick(symbol)}
       >
         <div className="relative">
           {/* Color bar at top - green for positive, red for negative */}
