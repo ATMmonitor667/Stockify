@@ -1,19 +1,22 @@
-# This workflow will deploy the application to Vercel after a successful merge to main
-
-name: deploy
+name: Preview Deployment
 
 on:
-  workflow_run:
-    workflows: [Test Suite]
-    types: [completed]
-    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, development]
 
 jobs:
-  on-success:
+  deploy-preview:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Debug Environment
+        run: |
+          echo "Secret presence check (will show 'true' if exists):"
+          echo "VERCEL_TOKEN exists: ${{ secrets.VERCEL_TOKEN != '' }}"
+          echo "VERCEL_ORG_ID exists: ${{ secrets.VERCEL_ORG_ID != '' }}"
+          echo "VERCEL_PROJECT_ID exists: ${{ secrets.VERCEL_PROJECT_ID != '' }}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -34,11 +37,13 @@ jobs:
           echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" >> .env
           echo "NEXT_PUBLIC_FINNHUB_API_KEY=${{ secrets.NEXT_PUBLIC_FINNHUB_API_KEY }}" >> .env
 
-      - name: Deploy to Vercel (Production)
-        uses: amondnet/vercel-action@v25.1.0
+      - name: Deploy to Vercel (Preview)
+        id: deploy-vercel-preview
+        uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./frontend
-          prod: true
+          working-directory: frontend
+          github-comment: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
