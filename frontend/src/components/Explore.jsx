@@ -158,6 +158,9 @@ const Explore = () => {
   const [isLoadingStocks, setIsLoadingStocks] = useState(true);
   const [loadingStates, setLoadingStates] = useState({});
   const searchTimeoutRef = useRef(null);
+  const [watchlist, setWatchlist] = useState([]);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
+  const [watchlistError, setWatchlistError] = useState(null);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -1072,6 +1075,63 @@ const Explore = () => {
     }
   };
 
+  // Add this function to handle watchlist operations
+  const handleWatchlistToggle = async (symbol, e) => {
+    e.stopPropagation(); // Prevent card click event
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const isInWatchlist = watchlist.includes(symbol);
+      
+      if (isInWatchlist) {
+        // Remove from watchlist
+        const { error } = await supabase
+          .from('watchlist')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('symbol', symbol);
+        
+        if (error) throw error;
+        setWatchlist(watchlist.filter(s => s !== symbol));
+      } else {
+        // Add to watchlist
+        const { error } = await supabase
+          .from('watchlist')
+          .insert([
+            { user_id: user.id, symbol: symbol }
+          ]);
+        
+        if (error) throw error;
+        setWatchlist([...watchlist, symbol]);
+      }
+    } catch (error) {
+      console.error('Error updating watchlist:', error);
+    }
+  };
+
+  // Add this useEffect to fetch watchlist on component mount
+  useEffect(() => {
+    const fetchWatchlist = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('watchlist')
+          .select('symbol')
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+        setWatchlist(data.map(item => item.symbol));
+      } catch (error) {
+        console.error('Error fetching watchlist:', error);
+      }
+    };
+
+    fetchWatchlist();
+  }, []);
+
   // Optimize the stock card rendering
   const renderStockCard = (stock, symbol) => {
     if (!stock || !stock.profile || !stock.quote) {
@@ -1105,6 +1165,9 @@ const Explore = () => {
     const priceChange = stock.quote.d || 0;
     const percentChange = stock.quote.dp || 0;
     const isPositive = percentChange >= 0;
+
+    const isInWatchlist = watchlist.some(item => item.symbol === symbol);
+    const isWatchlistLoading = watchlistLoading && watchlist.some(item => item.symbol === symbol);
 
     return (
       <Card
@@ -1145,6 +1208,36 @@ const Explore = () => {
                   {stock.profile.ticker}
                 </span>
               </div>
+              {/* Add like button */}
+              <button
+                onClick={(e) => handleWatchlistToggle(symbol, e)}
+                className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors ${
+                  isWatchlistLoading ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+                disabled={isWatchlistLoading}
+                title={isInWatchlist ? "Remove from watchlist" : "Add to watchlist"}
+              >
+                {isWatchlistLoading ? (
+                  <div className="h-5 w-5 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className={`h-5 w-5 ${
+                      isInWatchlist
+                        ? "text-red-500 fill-current"
+                        : "text-gray-400 dark:text-gray-500"
+                    }`}
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                )}
+              </button>
             </div>
 
             {/* Main price display */}

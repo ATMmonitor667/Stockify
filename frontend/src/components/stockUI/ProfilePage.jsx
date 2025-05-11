@@ -27,83 +27,6 @@ ChartJS.register(
   Legend
 );
 
-// Dummy data for demonstration
-const DUMMY_PROFILE = {
-  user_name: 'John Doe',
-  created_at: '2024-01-01',
-  wallet_amt: 25000.00
-};
-
-// Add realistic portfolio history data
-const DUMMY_PORTFOLIO_HISTORY = [
-  { date: '2024-03-11', value: 24500.00 },
-  { date: '2024-03-12', value: 24800.00 },
-  { date: '2024-03-13', value: 25100.00 },
-  { date: '2024-03-14', value: 24900.00 },
-  { date: '2024-03-15', value: 25200.00 },
-  { date: '2024-03-16', value: 25500.00 },
-  { date: '2024-03-17', value: 25800.00 }
-];
-
-const DUMMY_INVESTED_STOCKS = [
-  {
-    symbol: 'AAPL',
-    quote: { c: 175.50, d: 2.5, dp: 1.45 },
-    profile: { name: 'Apple Inc.' },
-    amt_bought: 10,
-    total_spent: 1500.00,
-    stock_info: { name: 'Apple Inc.', num_investors: 1500 }
-  },
-  {
-    symbol: 'GOOGL',
-    quote: { c: 145.75, d: -1.25, dp: -0.85 },
-    profile: { name: 'Alphabet Inc.' },
-    amt_bought: 5,
-    total_spent: 725.00,
-    stock_info: { name: 'Alphabet Inc.', num_investors: 1200 }
-  },
-  {
-    symbol: 'MSFT',
-    quote: { c: 415.25, d: 5.75, dp: 1.40 },
-    profile: { name: 'Microsoft Corporation' },
-    amt_bought: 3,
-    total_spent: 1200.00,
-    stock_info: { name: 'Microsoft Corporation', num_investors: 1800 }
-  }
-];
-
-const DUMMY_WATCHLIST = [
-  {
-    symbol: 'TSLA',
-    name: 'Tesla, Inc.',
-    current_price: 175.21,
-    change: 3.45,
-    change_percent: 2.01
-  },
-  {
-    symbol: 'AMZN',
-    name: 'Amazon.com, Inc.',
-    current_price: 178.75,
-    change: -1.25,
-    change_percent: -0.69
-  },
-  {
-    symbol: 'NVDA',
-    name: 'NVIDIA Corporation',
-    current_price: 865.20,
-    change: 15.75,
-    change_percent: 1.85
-  }
-];
-
-const DUMMY_TRADE_HISTORY = [
-  { id: 1, symbol: 'AAPL', type: 'buy', quantity: 5, price: 175.50, created_at: '2024-03-15T10:30:00' },
-  { id: 2, symbol: 'GOOGL', type: 'buy', quantity: 2, price: 145.75, created_at: '2024-03-14T14:20:00' },
-  { id: 3, symbol: 'MSFT', type: 'sell', quantity: 3, price: 415.25, created_at: '2024-03-13T09:15:00' },
-  { id: 4, symbol: 'TSLA', type: 'buy', quantity: 10, price: 172.35, created_at: '2024-03-12T16:45:00' },
-  { id: 5, symbol: 'NVDA', type: 'buy', quantity: 2, price: 865.20, created_at: '2024-03-11T11:30:00' }
-];
-
 const Profile = () => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -115,188 +38,155 @@ const Profile = () => {
   const [portfolioHistory, setPortfolioHistory] = useState([]);
   const [totalGainLoss, setTotalGainLoss] = useState(0);
   const [gainLossPercentage, setGainLossPercentage] = useState(0);
+  const [user, setUser] = useState(null);
+  const [stockData, setStockData] = useState({});
+  const [isLoadingStocks, setIsLoadingStocks] = useState(true);
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      setLoading(true);
+    const fetchUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        window.location.href = "/";
+        return;
+      }
+      setUser(session.user);
+    };
+    fetchUser();
+  }, []);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) return;
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-
-        if (!user) {
-          // Use dummy data if not authenticated
-          setProfile(DUMMY_PROFILE);
-          setInvestedStocks(DUMMY_INVESTED_STOCKS);
-          setWatchlist(DUMMY_WATCHLIST);
-          setTradeHistory(DUMMY_TRADE_HISTORY);
-
-          // Calculate portfolio value
-          const totalValue = DUMMY_INVESTED_STOCKS.reduce((sum, stock) => {
-            return sum + (stock.quote.c * stock.amt_bought);
-          }, 0);
-          setPortfolioValue(totalValue);
-
-          // Use the dummy portfolio history
-          setPortfolioHistory(DUMMY_PORTFOLIO_HISTORY);
-
-          setLoading(false);
-          return;
-        }
-
-        // Comment out actual data fetching
-        /*
-        // Fetch profile data
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', user.id)
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", user.id)
           .single();
 
-        if (profileData) {
-          setProfile(profileData);
-        }
-
-        // Fetch invested stocks
-        const { data: userStocks, error: stocksError } = await supabase
-          .from('userstock')
-          .select(`
-            amt_bought,
-            total_spent,
-            stock (tick, name, num_investors)
-          `)
-          .eq('user_id', user.id);
-
-        if (userStocks) {
-          const updatedStocks = await Promise.all(
-            userStocks.map(async (userStock) => {
-              const symbol = userStock.stock.tick;
-              try {
-                const [quote, profile] = await Promise.all([
-                  getStockQuote(symbol),
-                  getCompanyProfile(symbol),
-                ]);
-                return {
-                  symbol,
-                  quote,
-                  profile,
-                  amt_bought: userStock.amt_bought,
-                  total_spent: userStock.total_spent,
-                  stock_info: userStock.stock,
-                };
-              } catch (err) {
-                console.error(`Failed to fetch data for ${symbol}:`, err);
-                return null;
-              }
-            })
-          );
-          const validStocks = updatedStocks.filter(stock => stock !== null);
-          setInvestedStocks(validStocks);
-
-          // Calculate portfolio metrics
-          const totalValue = validStocks.reduce((sum, stock) => {
-            return sum + (stock.quote.c * stock.amt_bought);
-          }, 0);
-          setPortfolioValue(totalValue);
-
-          const totalSpent = validStocks.reduce((sum, stock) => {
-            return sum + stock.total_spent;
-          }, 0);
-
-          const gainLoss = totalValue - totalSpent;
-          setTotalGainLoss(gainLoss);
-          setGainLossPercentage((gainLoss / totalSpent) * 100);
-
-          // Generate portfolio history (last 7 days)
-          const history = Array.from({ length: 7 }, (_, i) => {
-            const date = new Date();
-            date.setDate(date.getDate() - i);
-            return {
-              date: date.toISOString().split('T')[0],
-              value: totalValue * (1 + (Math.random() * 0.1 - 0.05)) // Simulated daily change
-            };
-          }).reverse();
-          setPortfolioHistory(history);
-        }
-
-        // Fetch watchlist
-        const { data: watchlistData, error: watchlistError } = await supabase
-          .from('watchlist')
-          .select(`
-            stock (tick, name)
-          `)
-          .eq('user_id', user.id);
-
-        if (watchlistData) {
-          const watchlistStocks = await Promise.all(
-            watchlistData.map(async (item) => {
-              const symbol = item.stock.tick;
-              try {
-                const quote = await getStockQuote(symbol);
-                return {
-                  symbol,
-                  name: item.stock.name,
-                  current_price: quote.c,
-                  change: quote.d,
-                  change_percent: quote.dp,
-                };
-              } catch (err) {
-                console.error(`Failed to fetch data for ${symbol}:`, err);
-                return null;
-              }
-            })
-          );
-          setWatchlist(watchlistStocks.filter(stock => stock !== null));
-        }
-
-        // Fetch trade history
-        const { data: trades, error: tradesError } = await supabase
-          .from('trades')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (trades) {
-          setTradeHistory(trades);
-        }
-        */
-
-        // Use dummy data for authenticated users as well
-        setProfile(DUMMY_PROFILE);
-        setInvestedStocks(DUMMY_INVESTED_STOCKS);
-        setWatchlist(DUMMY_WATCHLIST);
-        setTradeHistory(DUMMY_TRADE_HISTORY);
-
-        // Calculate portfolio value
-        const totalValue = DUMMY_INVESTED_STOCKS.reduce((sum, stock) => {
-          return sum + (stock.quote.c * stock.amt_bought);
-        }, 0);
-        setPortfolioValue(totalValue);
-
-        // Calculate gain/loss
-        const totalSpent = DUMMY_INVESTED_STOCKS.reduce((sum, stock) => {
-          return sum + stock.total_spent;
-        }, 0);
-        const gainLoss = totalValue - totalSpent;
-        setTotalGainLoss(gainLoss);
-        setGainLossPercentage((gainLoss / totalSpent) * 100);
-
-        // Use the dummy portfolio history
-        setPortfolioHistory(DUMMY_PORTFOLIO_HISTORY);
-
+        if (error) throw error;
+        setProfile(data);
       } catch (error) {
-        console.error('Error in fetch user data:', error);
-        // Use dummy data on error
-        setProfile(DUMMY_PROFILE);
-        setInvestedStocks(DUMMY_INVESTED_STOCKS);
-        setWatchlist(DUMMY_WATCHLIST);
-        setTradeHistory(DUMMY_TRADE_HISTORY);
-        setPortfolioHistory(DUMMY_PORTFOLIO_HISTORY);
+        console.error("Error fetching profile:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchUserData();
-  }, []);
+    fetchProfile();
+  }, [user]);
+
+  useEffect(() => {
+    const fetchInvestedStocks = async () => {
+      if (!user) return;
+      try {
+        const { data, error } = await supabase
+          .from("userstock")
+          .select(`
+            stock_id,
+            amt_bought,
+            total_spent,
+            stock:stock (
+              tick
+            )
+          `)
+          .eq("user_id", user.id);
+
+        if (error) throw error;
+        setInvestedStocks(data);
+      } catch (error) {
+        console.error("Error fetching invested stocks:", error);
+      }
+    };
+
+    fetchInvestedStocks();
+  }, [user]);
+
+  useEffect(() => {
+    const fetchWatchlist = async () => {
+      if (!user) return;
+      try {
+        const { data, error } = await supabase
+          .from("watchlist")
+          .select("symbol")
+          .eq("user_id", user.id);
+
+        if (error) throw error;
+        setWatchlist(data.map(item => item.symbol));
+      } catch (error) {
+        console.error("Error fetching watchlist:", error);
+      }
+    };
+
+    fetchWatchlist();
+  }, [user]);
+
+  useEffect(() => {
+    const fetchTradeHistory = async () => {
+      if (!user) return;
+      try {
+        const { data, error } = await supabase
+          .from("transactionhistory")
+          .select(`
+            *,
+            stock:stock (
+              tick
+            )
+          `)
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setTradeHistory(data);
+      } catch (error) {
+        console.error("Error fetching trade history:", error);
+      }
+    };
+
+    fetchTradeHistory();
+  }, [user]);
+
+  // Fetch stock data for watchlist items
+  useEffect(() => {
+    const fetchStockData = async () => {
+      if (watchlist.length === 0) {
+        setIsLoadingStocks(false);
+        return;
+      }
+
+      setIsLoadingStocks(true);
+      try {
+        const stockDataPromises = watchlist.map(async (symbol) => {
+          try {
+            const [quote, profile] = await Promise.all([
+              getStockQuote(symbol),
+              getCompanyProfile(symbol),
+            ]);
+            return { symbol, quote, profile };
+          } catch (error) {
+            console.error(`Error fetching data for ${symbol}:`, error);
+            return null;
+          }
+        });
+
+        const results = await Promise.all(stockDataPromises);
+        const validResults = results.filter(Boolean);
+        
+        const newStockData = {};
+        validResults.forEach(({ symbol, quote, profile }) => {
+          newStockData[symbol] = { quote, profile };
+        });
+
+        setStockData(newStockData);
+      } catch (error) {
+        console.error("Error fetching stock data:", error);
+      } finally {
+        setIsLoadingStocks(false);
+      }
+    };
+
+    fetchStockData();
+  }, [watchlist]);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -472,36 +362,39 @@ const Profile = () => {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b mb-6 bg-white dark:bg-gray-800 rounded-t-xl p-4 border border-gray-100 dark:border-gray-700">
+        <div className="flex space-x-4 mb-6">
           <button
-            onClick={() => handleTabChange('portfolio')}
-            className={`py-3 px-8 font-semibold text-base rounded-lg transition-all ${
+            onClick={() => setActiveTab('portfolio')}
+            className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
               activeTab === 'portfolio'
-                ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 shadow-md'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
             }`}
           >
-            Portfolio
+            <FaChartLine />
+            <span>Portfolio</span>
           </button>
           <button
-            onClick={() => handleTabChange('watchlist')}
-            className={`py-3 px-8 font-semibold text-base rounded-lg transition-all ${
+            onClick={() => setActiveTab('watchlist')}
+            className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
               activeTab === 'watchlist'
-                ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 shadow-md'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
             }`}
           >
-            Watchlist
+            <FaStar />
+            <span>Watchlist</span>
           </button>
           <button
-            onClick={() => handleTabChange('trades')}
-            className={`py-3 px-8 font-semibold text-base rounded-lg transition-all ${
-              activeTab === 'trades'
-                ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 shadow-md'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'
+            onClick={() => setActiveTab('history')}
+            className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
+              activeTab === 'history'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
             }`}
           >
-            Trade History
+            <FaHistory />
+            <span>Trade History</span>
           </button>
         </div>
 
@@ -549,60 +442,125 @@ const Profile = () => {
           )}
 
           {activeTab === 'watchlist' && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                Watchlist
-              </h2>
-              {watchlist.map((stock) => (
-                <div key={stock.symbol}
-                  className="flex items-center justify-between p-6 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700/50 dark:to-gray-800/50 rounded-xl shadow-md transform transition-all hover:scale-[1.02] border border-gray-100 dark:border-gray-600">
-                  <div>
-                    <h3 className="font-bold text-xl">{stock.symbol}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{stock.name}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-xl">
-                      ${stock.current_price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                    </p>
-                    <div className="flex items-center justify-end gap-2">
-                      {stock.change >= 0 ? <FaArrowUp className="text-green-500" /> : <FaArrowDown className="text-red-500" />}
-                      <p className={`text-sm font-semibold ${stock.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {stock.change >= 0 ? '+' : ''}{stock.change_percent.toFixed(2)}%
-                      </p>
-                    </div>
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {isLoadingStocks ? (
+                <div className="col-span-full flex justify-center items-center h-32">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
                 </div>
-              ))}
+              ) : watchlist.length === 0 ? (
+                <div className="col-span-full">
+                  <Card className="p-6 text-center">
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">Your watchlist is empty</p>
+                    <Button onClick={() => window.location.href = '/explore'}>
+                      Explore Stocks
+                    </Button>
+                  </Card>
+                </div>
+              ) : (
+                watchlist.map((symbol) => {
+                  const stock = stockData[symbol];
+                  if (!stock) return null;
+
+                  const priceChange = stock.quote.d || 0;
+                  const percentChange = stock.quote.dp || 0;
+                  const isPositive = percentChange >= 0;
+
+                  return (
+                    <Card key={symbol} className="p-4 hover:shadow-lg transition-shadow">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h3 className="font-bold text-lg">{stock.profile.name}</h3>
+                          <p className="text-gray-600 dark:text-gray-400">{symbol}</p>
+                        </div>
+                        <div className={`text-right ${
+                          isPositive ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          <p className="text-lg font-semibold">${stock.quote.c.toFixed(2)}</p>
+                          <p className="text-sm">
+                            {isPositive ? '+' : ''}{percentChange.toFixed(2)}%
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+                        <div>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Market Cap</p>
+                          <p className="font-medium">${(stock.quote.c * 1000000).toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Volume</p>
+                          <p className="font-medium">{stock.quote.v?.toLocaleString() || 'N/A'}</p>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })
+              )}
             </div>
           )}
 
-          {activeTab === 'trades' && (
+          {activeTab === 'history' && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 Trade History
               </h2>
-              {tradeHistory.map((trade) => (
-                <div key={trade.id}
-                  className="flex items-center justify-between p-6 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700/50 dark:to-gray-800/50 rounded-xl shadow-md transform transition-all hover:scale-[1.02] border border-gray-100 dark:border-gray-600">
-                  <div>
-                    <h3 className="font-bold text-xl">{trade.symbol}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {new Date(trade.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className={`font-bold text-xl ${trade.type === 'buy' ? 'text-green-500' : 'text-red-500'}`}>
-                      {trade.type.toUpperCase()}
-                    </p>
-                    <p className="text-sm font-semibold">
-                      {trade.quantity} shares
-                    </p>
-                    <p className="text-sm text-gray-500 mt-1">
-                      @ ${trade.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                    </p>
-                  </div>
-                </div>
-              ))}
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Stock
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Type
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Quantity
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Price
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Total
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                        Date
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {tradeHistory.map((trade) => (
+                      <tr key={trade.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                          {trade.stock.tick}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          <span
+                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              trade.type === "buy"
+                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                                : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                            }`}
+                          >
+                            {trade.type.toUpperCase()}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {trade.quantity}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          ${trade.price_per_share.toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          ${trade.total_amount.toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {new Date(trade.created_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
