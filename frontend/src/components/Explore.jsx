@@ -13,7 +13,6 @@ import {
   searchStocks,
 } from "@/config/finnhubClient";
 import { debounce } from "lodash";
-import Watchlist from './StockUI/Watchlist';
 
 // UI Components
 const Card = React.forwardRef(({ className, ...props }, ref) => (
@@ -258,11 +257,14 @@ const Explore = () => {
       const isHoliday = MARKET_HOLIDAYS.includes(today);
 
       // Market is open only on weekdays, during trading hours, and not on holidays
+      // Temporarily allowing trading during off-market hours
       setIsMarketOpen(
-        !isWeekend &&
-          !isHoliday &&
-          currentTimeInHours >= TRADING_HOURS.START &&
-          currentTimeInHours < TRADING_HOURS.END
+        true
+        // Commented out for testing:
+        // !isWeekend &&
+        //   !isHoliday &&
+        //   currentTimeInHours >= TRADING_HOURS.START &&
+        //   currentTimeInHours < TRADING_HOURS.END
       );
     };
 
@@ -280,61 +282,15 @@ const Explore = () => {
         getCompanyProfile(symbol),
       ]);
 
-      // Get the stock ID from the database
-      const { data: stockData, error } = await supabase
-        .from('stock')
-        .select('id')
-        .eq('tick', symbol)
-        .single();
-
-      let stockId;
-
-      // If we don't have a stock ID, create one
-      if (error || !stockData) {
-        const { data: newStock, error: insertError } = await supabase
-          .from('stock')
-          .insert({
-            name: profile.name || symbol,
-            tick: symbol,
-            num_investors: 0,
-            current_price: quote.c // Add current price
-          })
-          .select('id')
-          .single();
-
-        if (insertError) {
-          console.error('Error creating stock:', insertError);
-          return;
-        }
-
-        stockId = newStock.id;
-      } else {
-        stockId = stockData.id;
-        
-        // Update the current price
-        await supabase
-          .from('stock')
-          .update({ current_price: quote.c })
-          .eq('id', stockId);
-      }
-
-      // Update the stock data with the stock ID
+      // Update the stock data
       setStockData((prevData) => ({
         ...prevData,
         [symbol]: {
           quote,
-          profile: {
-            ...profile,
-            id: stockId
-          },
+          profile,
         },
       }));
-
-      return stockId; // Return the stock ID for immediate use
-    } catch (error) {
-      console.error('Error fetching stock data:', error);
-      return null;
-    }
+    } catch (error) {}
   };
 
   // Update all stock data
@@ -1071,21 +1027,20 @@ const Explore = () => {
       }
 
       //Record transaction
-      const {data: recordedTransaction, error: transactionError } = await supabase
-        .from('transactionhistory')
-        .insert({
+      const { data: recordedTransaction, error: transactionError } =
+        await supabase.from("transactionhistory").insert({
           user_id: session.user.id,
           stock_id: stockId,
           type,
           quantity,
           price_per_share: currentPrice,
-          total_amount: tradeCost
+          total_amount: tradeCost,
         });
-        console.log(recordedTransaction);
-        console.log(transactionError);
-        if (transactionError) {
-          console.error('Failed to log transaction:', transactionError);
-        }
+      console.log(recordedTransaction);
+      console.log(transactionError);
+      if (transactionError) {
+        console.error("Failed to log transaction:", transactionError);
+      }
 
       // Fetch updated balance
       const { data: updatedProfile, error: updateError } = await supabase
@@ -1286,24 +1241,19 @@ const Explore = () => {
               </div>
             )}
 
-            {/* Add watchlist button next to trade button */}
-            <div className="flex space-x-2 mt-3">
-              {isMarketOpen && (
-                <button
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md text-sm font-medium transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedStocks([symbol]);
-                    setShowTradeModal(true);
-                  }}
-                >
-                  Trade
-                </button>
-              )}
-              <div className="flex-1">
-                <Watchlist stockId={stock.profile.id} />
-              </div>
-            </div>
+            {/* Trade button (visible only when market is open) */}
+            {isMarketOpen && (
+              <button
+                className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md text-sm font-medium transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedStocks([symbol]);
+                  setShowTradeModal(true);
+                }}
+              >
+                Trade
+              </button>
+            )}
           </div>
         </div>
       </Card>
