@@ -1,5 +1,6 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import Signup from '@/components/Signup'
+import { supabase } from '@/config/supabaseClient'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 // Mock Framer Motion
@@ -109,6 +110,200 @@ describe('Signup Component', () => {
     fireEvent.change(confirmPasswordInput, { target: { value: 'differentpassword' } })
     
     expect(screen.getByText('Passwords do not match')).toBeInTheDocument()
+  })
+
+  it('prevents form submission when passwords do not match', async () => {
+    render(<Signup />)
+    
+    const emailInput = screen.getByLabelText(/Email Address/i)
+    const usernameInput = screen.getByLabelText(/User Name/i)
+    const passwordInput = screen.getByLabelText(/^Password$/i)
+    const confirmPasswordInput = screen.getByLabelText(/Confirm Password/i)
+    const signupButton = screen.getByRole('button', { name: /Create account/i })
+    
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
+    fireEvent.change(usernameInput, { target: { value: 'testuser' } })
+    fireEvent.change(passwordInput, { target: { value: 'password123' } })
+    fireEvent.change(confirmPasswordInput, { target: { value: 'differentpassword' } })
+    
+    fireEvent.submit(signupButton.closest('form'))
+    
+    expect(screen.getByRole('alert').textContent).toContain('Passwords do not match')
+    expect(supabase.auth.signUp).not.toHaveBeenCalled()
+  })
+
+  it('handles successful signup and profile creation', async () => {
+    const mockUser = { id: 'user123' }
+    
+    // Reset mocks first
+    jest.clearAllMocks()
+    
+    // Mock successful signup
+    supabase.auth.signUp.mockResolvedValue({
+      data: { user: mockUser },
+      error: null
+    })
+    
+    // Mock successful profile creation
+    const mockInsert = jest.fn().mockResolvedValue({ error: null })
+    supabase.from.mockReturnValue({
+      insert: mockInsert
+    })
+    
+    render(<Signup />)
+    
+    const emailInput = screen.getByLabelText(/Email Address/i)
+    const usernameInput = screen.getByLabelText(/User Name/i)
+    const passwordInput = screen.getByLabelText(/^Password$/i)
+    const confirmPasswordInput = screen.getByLabelText(/Confirm Password/i)
+    const signupButton = screen.getByRole('button', { name: /Create account/i })
+    
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
+    fireEvent.change(usernameInput, { target: { value: 'testuser' } })
+    fireEvent.change(passwordInput, { target: { value: 'password123' } })
+    fireEvent.change(confirmPasswordInput, { target: { value: 'password123' } })
+    
+    fireEvent.submit(signupButton.closest('form'))
+    
+    // Check that the signup function was called
+    await waitFor(() => {
+      expect(supabase.auth.signUp).toHaveBeenCalled()
+    })
+    
+    // Check that the profile creation function was called
+    await waitFor(() => {
+      expect(supabase.from).toHaveBeenCalledWith('profiles')
+      expect(mockInsert).toHaveBeenCalled()
+    })
+    
+    // Verify success message is displayed
+    await waitFor(() => {
+      const successMessage = screen.getByText(/Verification email sent/i)
+      expect(successMessage).toBeInTheDocument()
+    })
+  })
+
+  it('displays error message when signup fails', async () => {
+    const errorMessage = 'Email already registered'
+    supabase.auth.signUp.mockResolvedValue({
+      data: null,
+      error: { message: errorMessage }
+    })
+    
+    render(<Signup />)
+    
+    const emailInput = screen.getByLabelText(/Email Address/i)
+    const usernameInput = screen.getByLabelText(/User Name/i)
+    const passwordInput = screen.getByLabelText(/^Password$/i)
+    const confirmPasswordInput = screen.getByLabelText(/Confirm Password/i)
+    const signupButton = screen.getByRole('button', { name: /Create account/i })
+    
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
+    fireEvent.change(usernameInput, { target: { value: 'testuser' } })
+    fireEvent.change(passwordInput, { target: { value: 'password123' } })
+    fireEvent.change(confirmPasswordInput, { target: { value: 'password123' } })
+    
+    fireEvent.submit(signupButton.closest('form'))
+    
+    await waitFor(() => {
+      const errorAlert = screen.getByText(errorMessage)
+      expect(errorAlert).toBeInTheDocument()
+    })
+  })
+
+  it('handles unexpected errors during signup', async () => {
+    // Use mockImplementation to throw an error
+    supabase.auth.signUp.mockImplementation(() => {
+      throw new Error('Network error')
+    })
+    
+    render(<Signup />)
+    
+    const emailInput = screen.getByLabelText(/Email Address/i)
+    const usernameInput = screen.getByLabelText(/User Name/i)
+    const passwordInput = screen.getByLabelText(/^Password$/i)
+    const confirmPasswordInput = screen.getByLabelText(/Confirm Password/i)
+    const signupButton = screen.getByRole('button', { name: /Create account/i })
+    
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
+    fireEvent.change(usernameInput, { target: { value: 'testuser' } })
+    fireEvent.change(passwordInput, { target: { value: 'password123' } })
+    fireEvent.change(confirmPasswordInput, { target: { value: 'password123' } })
+    
+    fireEvent.submit(signupButton.closest('form'))
+    
+    await waitFor(() => {
+      const errorAlert = screen.getByText('An unexpected error occurred')
+      expect(errorAlert).toBeInTheDocument()
+    })
+  })
+
+  it('displays success message when profile creation fails but signup succeeds', async () => {
+    const mockUser = { id: 'user123' }
+    
+    supabase.auth.signUp.mockResolvedValue({
+      data: { user: mockUser },
+      error: null
+    })
+    
+    // Mock profile creation error
+    supabase.from.mockReturnValue({
+      insert: jest.fn().mockResolvedValue({ error: { message: 'Profile creation failed' } })
+    })
+    
+    render(<Signup />)
+    
+    const emailInput = screen.getByLabelText(/Email Address/i)
+    const usernameInput = screen.getByLabelText(/User Name/i)
+    const passwordInput = screen.getByLabelText(/^Password$/i)
+    const confirmPasswordInput = screen.getByLabelText(/Confirm Password/i)
+    const signupButton = screen.getByRole('button', { name: /Create account/i })
+    
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
+    fireEvent.change(usernameInput, { target: { value: 'testuser' } })
+    fireEvent.change(passwordInput, { target: { value: 'password123' } })
+    fireEvent.change(confirmPasswordInput, { target: { value: 'password123' } })
+    
+    fireEvent.submit(signupButton.closest('form'))
+    
+    await waitFor(() => {
+      const successMessage = screen.getByText(/Verification email sent/i)
+      expect(successMessage).toBeInTheDocument()
+    })
+    
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Error creating profile'), expect.any(String))
+  })
+
+  it('shows loading state during form submission', async () => {
+    // Create a delayed promise to test loading state
+    supabase.auth.signUp.mockImplementation(() => {
+      return new Promise(resolve => {
+        setTimeout(() => {
+          resolve({
+            data: { user: { id: 'user123' } },
+            error: null
+          })
+        }, 100)
+      })
+    })
+    
+    render(<Signup />)
+    
+    const emailInput = screen.getByLabelText(/Email Address/i)
+    const usernameInput = screen.getByLabelText(/User Name/i)
+    const passwordInput = screen.getByLabelText(/^Password$/i)
+    const confirmPasswordInput = screen.getByLabelText(/Confirm Password/i)
+    const signupButton = screen.getByRole('button', { name: /Create account/i })
+    
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
+    fireEvent.change(usernameInput, { target: { value: 'testuser' } })
+    fireEvent.change(passwordInput, { target: { value: 'password123' } })
+    fireEvent.change(confirmPasswordInput, { target: { value: 'password123' } })
+    
+    fireEvent.submit(signupButton.closest('form'))
+    
+    expect(signupButton).toBeDisabled()
+    expect(signupButton).toHaveTextContent(/Creating account/i)
   })
 
   it('navigates to login page when sign in link is clicked', () => {
