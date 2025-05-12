@@ -13,7 +13,6 @@ import {
   searchStocks,
 } from "@/config/finnhubClient";
 import { debounce } from "lodash";
-import Watchlist from './StockUI/Watchlist';
 
 // UI Components
 const Card = React.forwardRef(({ className, ...props }, ref) => (
@@ -245,25 +244,8 @@ const Explore = () => {
   useEffect(() => {
     // Check if market is open (9:30 AM - 4:00 PM EST, weekdays only, excluding holidays)
     const checkMarketHours = () => {
-      const now = new Date();
-      const estHour = now.getUTCHours() - 4; // Convert to EST
-      const estMinutes = now.getUTCMinutes();
-      const currentTimeInHours = estHour + estMinutes / 60;
-
-      // Check if it's a weekend (0 = Sunday, 6 = Saturday)
-      const isWeekend = now.getUTCDay() === 0 || now.getUTCDay() === 6;
-
-      // Check if it's a holiday
-      const today = now.toISOString().split("T")[0];
-      const isHoliday = MARKET_HOLIDAYS.includes(today);
-
-      // Market is open only on weekdays, during trading hours, and not on holidays
-      setIsMarketOpen(
-        !isWeekend &&
-          !isHoliday &&
-          currentTimeInHours >= TRADING_HOURS.START &&
-          currentTimeInHours < TRADING_HOURS.END
-      );
+      // Always set market to open regardless of time
+      setIsMarketOpen(true);
     };
 
     checkMarketHours();
@@ -280,61 +262,15 @@ const Explore = () => {
         getCompanyProfile(symbol),
       ]);
 
-      // Get the stock ID from the database
-      const { data: stockData, error } = await supabase
-        .from('stock')
-        .select('id')
-        .eq('tick', symbol)
-        .single();
-
-      let stockId;
-
-      // If we don't have a stock ID, create one
-      if (error || !stockData) {
-        const { data: newStock, error: insertError } = await supabase
-          .from('stock')
-          .insert({
-            name: profile.name || symbol,
-            tick: symbol,
-            num_investors: 0,
-            current_price: quote.c // Add current price
-          })
-          .select('id')
-          .single();
-
-        if (insertError) {
-          console.error('Error creating stock:', insertError);
-          return;
-        }
-
-        stockId = newStock.id;
-      } else {
-        stockId = stockData.id;
-        
-        // Update the current price
-        await supabase
-          .from('stock')
-          .update({ current_price: quote.c })
-          .eq('id', stockId);
-      }
-
-      // Update the stock data with the stock ID
+      // Update the stock data
       setStockData((prevData) => ({
         ...prevData,
         [symbol]: {
           quote,
-          profile: {
-            ...profile,
-            id: stockId
-          },
+          profile,
         },
       }));
-
-      return stockId; // Return the stock ID for immediate use
-    } catch (error) {
-      console.error('Error fetching stock data:', error);
-      return null;
-    }
+    } catch (error) {}
   };
 
   // Update all stock data
@@ -406,15 +342,13 @@ const Explore = () => {
 
     loadInitialData();
 
-    // Update stocks every minute if market is open
+    // Update stocks every minute regardless of market status
     const interval = setInterval(() => {
-      if (isMarketOpen) {
-        updateAllStockData();
-      }
+      updateAllStockData();
     }, 60000);
 
     return () => clearInterval(interval);
-  }, [isMarketOpen]);
+  }, []);
 
   // Add a separate effect to handle selectedStock changes
   useEffect(() => {
@@ -1071,21 +1005,20 @@ const Explore = () => {
       }
 
       //Record transaction
-      const {data: recordedTransaction, error: transactionError } = await supabase
-        .from('transactionhistory')
-        .insert({
+      const { data: recordedTransaction, error: transactionError } =
+        await supabase.from("transactionhistory").insert({
           user_id: session.user.id,
           stock_id: stockId,
           type,
           quantity,
           price_per_share: currentPrice,
-          total_amount: tradeCost
+          total_amount: tradeCost,
         });
-        console.log(recordedTransaction);
-        console.log(transactionError);
-        if (transactionError) {
-          console.error('Failed to log transaction:', transactionError);
-        }
+      console.log(recordedTransaction);
+      console.log(transactionError);
+      if (transactionError) {
+        console.error("Failed to log transaction:", transactionError);
+      }
 
       // Fetch updated balance
       const { data: updatedProfile, error: updateError } = await supabase
@@ -1134,18 +1067,9 @@ const Explore = () => {
     }
 
     const handleCardClick = (e) => {
-      // Stop event propagation to prevent click outside handler from firing
-      e.stopPropagation();
-
-      // Only update selectedStocks if this is a search result card
-      if (selectedStocks.includes(symbol)) {
-        setSelectedStocks([symbol]);
-      }
-
-      // Only show trade modal if market is open
-      if (isMarketOpen) {
-        setShowTradeModal(true);
-      }
+      e.preventDefault();
+      setSelectedStocks([symbol]);
+      setShowTradeModal(true);
     };
 
     // Calculate daily change in dollar value
@@ -1156,9 +1080,7 @@ const Explore = () => {
     return (
       <Card
         key={stock.profile.ticker}
-        className={`overflow-hidden bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-blue-500 hover:shadow-lg transition-all duration-300 ${
-          isMarketOpen ? "cursor-pointer" : ""
-        }`}
+        className={`overflow-hidden bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-blue-500 hover:shadow-lg transition-all duration-300 cursor-pointer`}
         onClick={handleCardClick}
       >
         <div className="relative">
@@ -1267,43 +1189,17 @@ const Explore = () => {
               )}
             </div>
 
-            {/* Market status indicator */}
-            {!isMarketOpen && (
-              <div className="mt-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 rounded-md px-3 py-1.5 text-xs flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 mr-1"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                Market Closed
-              </div>
-            )}
-
-            {/* Add watchlist button next to trade button */}
-            <div className="flex space-x-2 mt-3">
-              {isMarketOpen && (
-                <button
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md text-sm font-medium transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedStocks([symbol]);
-                    setShowTradeModal(true);
-                  }}
-                >
-                  Trade
-                </button>
-              )}
-              <div className="flex-1">
-                <Watchlist stockId={stock.profile.id} />
-              </div>
-            </div>
+            {/* Trade button (always visible) */}
+            <button
+              className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md text-sm font-medium transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedStocks([symbol]);
+                setShowTradeModal(true);
+              }}
+            >
+              Trade
+            </button>
           </div>
         </div>
       </Card>
@@ -1330,10 +1226,9 @@ const Explore = () => {
         key={symbol}
         className="overflow-hidden bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-blue-500 hover:shadow-lg transition-all duration-300 cursor-pointer"
         onClick={() => {
-          if (isMarketOpen) {
-            setSelectedStocks([symbol]);
-            setShowTradeModal(true);
-          }
+          // Always allow trading
+          setSelectedStocks([symbol]);
+          setShowTradeModal(true);
         }}
       >
         <div className="relative">
@@ -1422,36 +1317,17 @@ const Explore = () => {
               </div>
             </div>
 
-            {!isMarketOpen && (
-              <div className="mt-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 rounded-md px-3 py-1.5 text-xs flex items-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4 mr-1"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                Market Closed
-              </div>
-            )}
-
-            {isMarketOpen && (
-              <button
-                className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded-md text-xs font-medium transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedStocks([symbol]);
-                  setShowTradeModal(true);
-                }}
-              >
-                Trade
-              </button>
-            )}
+            {/* Trade button (always visible) */}
+            <button
+              className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded-md text-xs font-medium transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedStocks([symbol]);
+                setShowTradeModal(true);
+              }}
+            >
+              Trade
+            </button>
           </div>
         </div>
       </Card>
