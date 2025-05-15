@@ -51,15 +51,42 @@ export default function Watchlist({ isProfileView = false, stockId = null }) {
           stock:stock_id (
             id,
             tick,
-            name,
-            current_price
+            name
           )
         `
         )
         .eq("user_id", userId);
 
       if (error) throw error;
-      setWatchlist(data || []);
+
+      // Get real-time prices for each stock in the watchlist
+      const { getStockQuote } = await import("@/config/finnhubClient");
+
+      const watchlistWithPrices = await Promise.all(
+        (data || []).map(async (item) => {
+          if (item.stock?.tick) {
+            try {
+              const quote = await getStockQuote(item.stock.tick);
+              return {
+                ...item,
+                stock: {
+                  ...item.stock,
+                  live_price: quote?.c || null, // Add live price from Finnhub
+                },
+              };
+            } catch (priceError) {
+              console.error(
+                `Error fetching price for ${item.stock.tick}:`,
+                priceError
+              );
+              return item;
+            }
+          }
+          return item;
+        })
+      );
+
+      setWatchlist(watchlistWithPrices);
     } catch (error) {
       console.error("Error fetching watchlist:", error);
       toast.error("Failed to load watchlist");
@@ -183,8 +210,9 @@ export default function Watchlist({ isProfileView = false, stockId = null }) {
                     </TableCell>
                     <TableCell>{item.stock?.name || "-"}</TableCell>
                     <TableCell>
-                      {item.stock?.current_price !== undefined
-                        ? `$${item.stock.current_price.toFixed(2)}`
+                      {item.stock?.live_price !== undefined &&
+                      item.stock?.live_price !== null
+                        ? `$${item.stock.live_price.toFixed(2)}`
                         : "N/A"}
                     </TableCell>
                     <TableCell>

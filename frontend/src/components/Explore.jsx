@@ -304,7 +304,7 @@ const Explore = () => {
             name: profile.name || symbol,
             tick: symbol,
             num_investors: 0,
-            current_price: quote.c, // Add current price
+            // Removed current_price field as it doesn't exist in the database schema
           })
           .select("id")
           .single();
@@ -317,12 +317,9 @@ const Explore = () => {
         stockId = newStock.id;
       } else {
         stockId = stockData.id;
-
-        // Update the current price
-        await supabase
-          .from("stock")
-          .update({ current_price: quote.c })
-          .eq("id", stockId);
+        // We don't need to update the price in the database since:
+        // 1. The 'current_price' column doesn't exist in the stock table
+        // 2. We're already storing the real-time price from Finnhub in memory via quote.c
       }
 
       // Update the stock data with the stock ID
