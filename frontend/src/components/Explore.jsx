@@ -13,7 +13,6 @@ import {
   searchStocks,
 } from "@/config/finnhubClient";
 import { debounce } from "lodash";
-import Link from "next/link";
 
 // UI Components
 const Card = React.forwardRef(({ className, ...props }, ref) => (
@@ -1240,28 +1239,19 @@ const Explore = () => {
               </div>
             )}
 
-            {/* Action buttons */}
-            <div className="flex gap-2 mt-3">
-              {isMarketOpen && (
-                <button
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md text-sm font-medium transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedStocks([symbol]);
-                    setShowTradeModal(true);
-                  }}
-                >
-                  Trade
-                </button>
-              )}
-              <Link
-                href={`/stock/${symbol}`}
-                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 rounded-md text-sm font-medium transition-colors text-center"
-                onClick={(e) => e.stopPropagation()}
+            {/* Trade button (visible only when market is open) */}
+            {isMarketOpen && (
+              <button
+                className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md text-sm font-medium transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedStocks([symbol]);
+                  setShowTradeModal(true);
+                }}
               >
-                View Details
-              </Link>
-            </div>
+                Trade
+              </button>
+            )}
           </div>
         </div>
       </Card>
