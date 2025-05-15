@@ -241,11 +241,14 @@ const Explore = () => {
     fetchUserData();
   }, []);
 
+  // Toggle this constant to easily switch between real market hours and testing mode
+  const USE_REAL_MARKET_HOURS = true; // Set to false for testing trades when market is closed
+
   useEffect(() => {
     // Check if market is open (9:30 AM - 4:00 PM EST, weekdays only, excluding holidays)
     const checkMarketHours = () => {
       const now = new Date();
-      const estHour = now.getUTCHours() - 4; // Convert to EST
+      const estHour = now.getUTCHours() - 4;
       const estMinutes = now.getUTCMinutes();
       const currentTimeInHours = estHour + estMinutes / 60;
 
@@ -256,17 +259,18 @@ const Explore = () => {
       const today = now.toISOString().split("T")[0];
       const isHoliday = MARKET_HOLIDAYS.includes(today);
 
-      // Market is open only on weekdays, during trading hours, and not on holidays
-      // Commented out for testing during off-market hours
-      // setIsMarketOpen(
-      //   !isWeekend &&
-      //     !isHoliday &&
-      //     currentTimeInHours >= TRADING_HOURS.START &&
-      //     currentTimeInHours < TRADING_HOURS.END
-      // );
-
-      // Always set market as open for testing
-      setIsMarketOpen(false);
+      if (USE_REAL_MARKET_HOURS) {
+        // Market is open only on weekdays, during trading hours, and not on holidays
+        setIsMarketOpen(
+          !isWeekend &&
+            !isHoliday &&
+            currentTimeInHours >= TRADING_HOURS.START &&
+            currentTimeInHours < TRADING_HOURS.END
+        );
+      } else {
+        // Testing mode: Always keep market open
+        setIsMarketOpen(true);
+      }
     };
 
     checkMarketHours();
