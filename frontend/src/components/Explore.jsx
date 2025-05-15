@@ -266,7 +266,7 @@ const Explore = () => {
       // );
 
       // Always set market as open for testing
-      setIsMarketOpen(true);
+      setIsMarketOpen(false);
     };
 
     checkMarketHours();
