@@ -85,12 +85,22 @@ Tests run automatically on:
 - Every push to main branch
 - Every pull request
 - Every push to test-engineering branch
+- Every push to Jeff_U_Tests branch
 
 ### GitHub Actions Workflow
 - Runs frontend and backend tests separately
 - Reports test results
 - Shows test coverage
 - Fails if tests fail
+- Generates and uploads test coverage reports as artifacts
+- Test coverage reports can be downloaded from the GitHub Actions workflow page
+
+### Viewing Coverage Reports
+1. Go to the GitHub repository
+2. Click on "Actions" tab
+3. Select the most recent workflow run
+4. Scroll down to "Artifacts" section
+5. Download the frontend and backend coverage reports
 
 ## Coverage Requirements
 - Frontend: 80% minimum
