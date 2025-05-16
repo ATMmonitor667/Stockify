@@ -1,5 +1,5 @@
 'use client';
-import Profile from '@/components/Profile';
+import Profile from '@/components/stockUI/ProfilePage';
 
 const ProfilePage = () => {
   return (
@@ -13,4 +13,4 @@ const ProfilePage = () => {
   );
 };
 
-export default ProfilePage; 
+export default ProfilePage;

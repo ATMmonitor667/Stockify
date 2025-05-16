@@ -7,38 +7,16 @@ import PostCard from './PostCard';
 import { getStockQuote, getCompanyProfile, searchStocks } from '@/config/finnhubClient';
 import { motion } from 'framer-motion';
 
-// Dummy data for testing
-const DUMMY_INVESTED_STOCKS = [
-  { quantity: 10, purchase_price: 150, stocks: { symbol: 'AAPL', name: 'Apple Inc.', current_price: 175 } },
-  { quantity: 5, purchase_price: 2750, stocks: { symbol: 'GOOGL', name: 'Alphabet Inc.', current_price: 2900 } }
-  
-];
-
-const DUMMY_FOLLOWED_STOCKS = [
-  { symbol: 'AMZN', name: 'Amazon.com, Inc.', current_price: 178.75 },
-  { symbol: 'TSLA', name: 'Tesla, Inc.', current_price: 175.21 }
-  
-];
-
-const DUMMY_TRADE_HISTORY = [
-  { id: 1, date: '2024-04-01', symbol: 'AAPL', type: 'buy', quantity: 5, price: 175.50 },
-  { id: 2, date: '2024-04-03', symbol: 'GOOGL', type: 'buy', quantity: 2, price: 2850.75 },
-  { id: 3, date: '2024-04-05', symbol: 'MSFT', type: 'sell', quantity: 3, price: 410.25 },
-  { id: 4, date: '2024-04-08', symbol: 'TSLA', type: 'buy', quantity: 10, price: 172.35 },
-  { id: 5, date: '2024-04-10', symbol: 'NVDA', type: 'buy', quantity: 2, price: 865.20 }
-];
-
 const Profile = () => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [investedStocks, setInvestedStocks] = useState([]);
-  const [followedStocks, setFollowedStocks] = useState([]);
+  const [watchlist, setWatchlist] = useState([]);
   const [tradeHistory, setTradeHistory] = useState([]);
   const [userPosts, setUserPosts] = useState([]);
   const [activeTab, setActiveTab] = useState('stocks');
-  const [useDummyData, setUseDummyData] = useState(false);
 
   // Fetch actual user data
   useEffect(() => {
@@ -50,36 +28,27 @@ const Profile = () => {
         const { data: { user } } = await supabase.auth.getUser();
         
         if (!user) {
-          // If not authenticated, show error state
           setLoading(false);
           return;
         }
 
-         // Fetch profile data from Supabase
-         const { data: profileData, error: profileError } = await supabase
-           .from('profiles')
-           .select('*')
-           .eq('user_id', user.id)
-           .single();
+        // Fetch profile data from Supabase
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
 
-         if (profileError) {
-           console.error('Error fetching profile:', profileError);
-         } else if (profileData) {
-           setProfile(profileData);
-          
-           // Set some placeholder follower counts for now
-           setFollowersCount(Math.floor(Math.random() * 50) + 5);
-           setFollowingCount(Math.floor(Math.random() * 30) + 3);
-         }
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+        } else if (profileData) {
+          setProfile(profileData);
+          setFollowersCount(Math.floor(Math.random() * 50) + 5);
+          setFollowingCount(Math.floor(Math.random() * 30) + 3);
+        }
 
-         let hasRealData = false;
-
-        // // In a real implementation, you would fetch both invested and followed stocks
-        // // This is just placeholder code - update with your actual database queries
-        
-         // Example: Fetch invested stocks
-
-          const { data: userStocks, error: stocksError } = await supabase
+        // Fetch invested stocks
+        const { data: userStocks, error: stocksError } = await supabase
           .from('userstock')
           .select(`
             amt_bought,
@@ -87,14 +56,11 @@ const Profile = () => {
             stock (tick, name, num_investors)
           `)
           .eq('user_id', user.id);
-          //setInvestedStocks(userStocks);
           
-         if (stocksError) {
-           console.error('Error fetching stocks:', stocksError);
-         } else if (userStocks && userStocks.length > 0) {
-           //setInvestedStocks(userStocks);
-
-           await Promise.all(userStocks.map(async (userStock) => {
+        if (stocksError) {
+          console.error('Error fetching stocks:', stocksError);
+        } else if (userStocks && userStocks.length > 0) {
+          await Promise.all(userStocks.map(async (userStock) => {
             const symbol = userStock.stock.tick;
 
             try {
@@ -114,14 +80,44 @@ const Profile = () => {
             } catch (err) {
               console.error(`Failed to fetch data for ${symbol}:`, err);
             }
-           }));
-           hasRealData = true;
-         }
-         console.log(updatedStocks);
-         setInvestedStocks(updatedStocks);
+          }));
+        }
+        setInvestedStocks(updatedStocks);
+
+        // Fetch watchlist
+        const { data: watchlistData, error: watchlistError } = await supabase
+          .from('watchlist')
+          .select('symbol')
+          .eq('user_id', user.id);
+
+        if (watchlistError) {
+          console.error('Error fetching watchlist:', watchlistError);
+        } else if (watchlistData) {
+          // Fetch current prices for watchlist items
+          const watchlistWithPrices = await Promise.all(
+            watchlistData.map(async (item) => {
+              try {
+                const [quote, profile] = await Promise.all([
+                  getStockQuote(item.symbol),
+                  getCompanyProfile(item.symbol),
+                ]);
+                return {
+                  symbol: item.symbol,
+                  quote,
+                  profile,
+                };
+              } catch (err) {
+                console.error(`Failed to fetch data for ${item.symbol}:`, err);
+                return null;
+              }
+            })
+          );
+          setWatchlist(watchlistWithPrices.filter(Boolean));
+        }
          
-         const {data: transactionHistory, error: transactionError} = await supabase
-         .from('transactionhistory')
+        // Fetch transaction history
+        const {data: transactionHistory, error: transactionError} = await supabase
+          .from('transactionhistory')
           .select(`
             stock (tick, name),
             type,
@@ -132,71 +128,34 @@ const Profile = () => {
           `)
           .eq('user_id', user.id);
 
-          if (transactionError) {
-            console.error('Error fetching trade history:', transactionError);
-          } 
-          console.log("TRANSACTION: ", transactionHistory);
+        if (transactionError) {
+          console.error('Error fetching trade history:', transactionError);
+        } else {
           setTradeHistory(transactionHistory);
+        }
 
-          const {data: posts, error: postsError} = await supabase
+        // Fetch user posts
+        const {data: posts, error: postsError} = await supabase
           .from('posts')
-           .select(`
-             author,
-             created_at,
-             body,
-             id
-           `)
-           .eq('author', user.id);
+          .select(`
+            author,
+            created_at,
+            body,
+            id
+          `)
+          .eq('author', user.id);
 
-           if (postsError) {
-            console.error('Error fetching user posts:', postsError);
-          } 
+        if (postsError) {
+          console.error('Error fetching user posts:', postsError);
+        } else {
           setUserPosts(posts);
-
-          
-        
-        // // Example: Fetch followed stocks (replace with your actual query)
-        // // Typically this would be a separate table for stocks the user follows but doesn't own
-        // const { data: followedStocksData, error: followedStocksError } = await supabase
-        //   .from('followed_stocks') // Replace with your actual table name
-        //   .select(`
-        //     stocks:stock_id (symbol, name, current_price)
-        //   `)
-        //   .eq('user_id', user.id);
-          
-        // if (!followedStocksError && followedStocksData?.length > 0) {
-        //   // Format the data appropriately
-        //   setFollowedStocks(followedStocksData.map(item => item.stocks));
-        //   hasRealData = true;
-        // }
-        
-        // // If no real data was found, use dummy data for demonstration
-        // if (!hasRealData) {
-        //   console.log("No real data found, using dummy data for UI demonstration");
-        //   setUseDummyData(true);
-          
-        //   // Only set dummy data if real data wasn't found
-        //   if (!userStocks || userStocks.length === 0) {
-        //     setInvestedStocks(DUMMY_INVESTED_STOCKS);
-        //   }
-          
-        //   if (!followedStocksData || followedStocksData.length === 0) {
-        //     setFollowedStocks(DUMMY_FOLLOWED_STOCKS);
-        //   }
-          
-        //   setTradeHistory(DUMMY_TRADE_HISTORY);
-        // }
+        }
         
       } catch (error) {
         console.error('Error in fetch user data:', error);
-        setUseDummyData(true);
-        setInvestedStocks(DUMMY_INVESTED_STOCKS);
-        setFollowedStocks(DUMMY_FOLLOWED_STOCKS);
-        setTradeHistory(DUMMY_TRADE_HISTORY);
       } finally {
         setLoading(false);
       }
-      
     };
 
     fetchUserData();
@@ -279,132 +238,104 @@ const Profile = () => {
               <p className="text-sm text-gray-600 dark:text-gray-400">Following</p>
             </div>
             <div className="text-center">
-              <p className="font-semibold text-xl">{investedStocks.length + followedStocks.length}</p>
+              <p className="font-semibold text-xl">{investedStocks.length + watchlist.length}</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">Stocks</p>
             </div>
           </div>
         </div>
       </div>
 
-      {useDummyData && (
-        <div className="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-md">
-          <p className="text-sm font-medium">
-            <span className="font-bold">Note:</span> Using demo data for display purposes. Connect to a real database to see your actual data.
-          </p>
-        </div>
-      )}
-
       {/* Tab Navigation */}
-      <div className="flex border-b mb-6">
-        <button 
-          onClick={() => handleTabChange('stocks')}
-          className={`py-2 px-6 font-semibold text-base ${activeTab === 'stocks' 
-            ? 'text-blue-600 border-b-2 border-blue-600' 
-            : 'text-gray-500 hover:text-gray-700'}`}
+      <div className="flex space-x-4 mb-6">
+        <button
+          onClick={() => setActiveTab('stocks')}
+          className={`px-4 py-2 rounded-lg ${
+            activeTab === 'stocks'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+          }`}
         >
-          Stocks Portfolio
+          Stocks
         </button>
-        <button 
-          onClick={() => handleTabChange('trades')}
-          className={`py-2 px-6 font-semibold text-base ${activeTab === 'trades' 
-            ? 'text-blue-600 border-b-2 border-blue-600' 
-            : 'text-gray-500 hover:text-gray-700'}`}
+        <button
+          onClick={() => setActiveTab('watchlist')}
+          className={`px-4 py-2 rounded-lg ${
+            activeTab === 'watchlist'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+          }`}
+        >
+          Watchlist
+        </button>
+        <button
+          onClick={() => setActiveTab('history')}
+          className={`px-4 py-2 rounded-lg ${
+            activeTab === 'history'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+          }`}
         >
           Trade History
         </button>
-        <button 
-          onClick={() => handleTabChange('posts')}
-          className={`py-2 px-6 font-semibold text-base ${activeTab === 'posts' 
-            ? 'text-blue-600 border-b-2 border-blue-600' 
-            : 'text-gray-500 hover:text-gray-700'}`}
+        <button
+          onClick={() => setActiveTab('posts')}
+          className={`px-4 py-2 rounded-lg ${
+            activeTab === 'posts'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+          }`}
         >
           Posts
         </button>
       </div>
 
-      {/* Stock Portfolio Tab */}
+      {/* Content */}
       {activeTab === 'stocks' && (
-        <div>
-          {/* Invested Stocks Section */}
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-4">Invested Stocks</h2>
-            {investedStocks.length === 0 ? (
-              <Card className="p-6 text-center">
-                <p className="text-gray-600 dark:text-gray-400 mb-4">You haven't invested in any stocks yet.</p>
-                <Button variant="outline">Start Investing</Button>
-              </Card>
-            ) : (
-              <div className="grid gap-4">
-                {investedStocks.map((stock, index) => {
-                  const gainLoss = calculateGainLoss(stock.total_spent/stock.amt_bought, stock.quote.c);
-                  const profit = ((stock.quote.c * stock.amt_bought) - stock.total_spent).toFixed(2);
-                  return (
-                    <Card key={index} className="p-4 hover:shadow-md transition-shadow">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <h3 className="font-bold text-lg">{stock.symbol}</h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{stock.stock_info.name}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold">${Number(stock.quote.c).toFixed(2)}</p>
-                          <p className={`text-sm ${gainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {gainLoss >= 0 ? '+' : ''}
-                            {gainLoss.toFixed(2)}%
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-2 flex justify-between text-sm">
-                        <span>Qty: {stock.amt_bought}</span>
-                        <span>Total Spent: ${Number(stock.total_spent).toFixed(2)}</span>
-                        <span className={`text-sm ${profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            Your Profit: ${profit}
-                          </span>
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-          
-          {/* Followed Stocks Section */}
-          <div>
-            <h2 className="text-2xl font-bold mb-4">Followed Stocks</h2>
-            {followedStocks.length === 0 ? (
-              <Card className="p-6 text-center">
-                <p className="text-gray-600 dark:text-gray-400 mb-4">You aren't following any stocks yet.</p>
-                <Button variant="outline">Explore Stocks</Button>
-              </Card>
-            ) : (
-              <div className="grid gap-4">
-                {followedStocks.map((stock, index) => (
-                  <Card key={index} className="p-4 hover:shadow-md transition-shadow">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="font-bold text-lg">{stock.symbol}</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{stock.name}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold">${Number(stock.current_price).toFixed(2)}</p>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="mt-2 text-xs px-2 py-1"
-                        >
-                          Invest
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {investedStocks.map((stock) => (
+            <Card key={stock.symbol} className="p-4">
+              <h3 className="font-bold text-lg mb-2">{stock.profile.name}</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-2">
+                {stock.symbol}
+              </p>
+              <p className="text-lg font-semibold">
+                ${stock.quote.c.toFixed(2)}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Quantity: {stock.amt_bought}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Total Value: ${(stock.quote.c * stock.amt_bought).toFixed(2)}
+              </p>
+            </Card>
+          ))}
         </div>
       )}
 
-      {/* Trade History Tab */}
-      {activeTab === 'trades' && (
+      {activeTab === 'watchlist' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {watchlist.map((stock) => (
+            <Card key={stock.symbol} className="p-4">
+              <h3 className="font-bold text-lg mb-2">{stock.profile.name}</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-2">
+                {stock.symbol}
+              </p>
+              <p className="text-lg font-semibold">
+                ${stock.quote.c.toFixed(2)}
+              </p>
+              <p className={`text-sm ${
+                stock.quote.d >= 0
+                  ? 'text-green-600 dark:text-green-400'
+                  : 'text-red-600 dark:text-red-400'
+              }`}>
+                {stock.quote.d >= 0 ? '+' : ''}{stock.quote.d.toFixed(2)} ({stock.quote.dp.toFixed(2)}%)
+              </p>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {activeTab === 'history' && (
         <div className="trades-tab">
           <h2 className="text-2xl font-bold mb-4">Trade History</h2>
           {tradeHistory.length === 0 ? (
@@ -444,7 +375,6 @@ const Profile = () => {
         </div>
       )}
 
-      {/* Posts Tab */}
       {activeTab === 'posts' && (
         <div>
           <h2 className="text-2xl font-bold mb-4">Your Posts</h2>
@@ -488,12 +418,6 @@ const Profile = () => {
   );
 };
 
-// Helper function to calculate gain/loss percentage
-function calculateGainLoss(purchasePrice, currentPrice) {
-  if (!purchasePrice || !currentPrice) return 0;
-  return ((currentPrice - purchasePrice) / purchasePrice) * 100;
-}
-
 const formatTime = (dateString) => {
   const date = new Date(dateString);
   // Convert UTC to local time
@@ -506,9 +430,5 @@ const formatTime = (dateString) => {
     hour12: true
   });
 };
-
-
-
-
 
 export default Profile;
