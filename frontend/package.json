@@ -7,10 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "cross-env NODE_ENV=test jest",
+    "test": "npm run test:unit && npm run test:integration && npm run test:e2e",
     "test:watch": "NODE_ENV=test jest --watch",
     "test:coverage": "NODE_ENV=test jest --coverage",
-    "test:supabase": "NODE_ENV=test jest --testPathPattern=supabase"
+    "test:supabase": "NODE_ENV=test jest --testPathPattern=supabase",
+    "test:unit": "jest --config jest.config.js",
+    "test:integration": "jest --config jest.integration.config.js",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.2",
@@ -30,11 +33,14 @@
     "tailwind-merge": "^3.0.2"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.27.2",
+    "@babel/preset-react": "^7.27.1",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4.1.5",
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^14.2.1",
     "autoprefixer": "^10.4.21",
+    "babel-jest": "^29.7.0",
     "cross-env": "^7.0.3",
     "eslint": "^9",
     "eslint-config-next": "15.2.2",

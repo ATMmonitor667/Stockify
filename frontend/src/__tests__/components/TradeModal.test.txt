@@ -1,0 +1,65 @@
+import { render, screen, fireEvent } from '@testing-library/react';
+import TradeModal from '@/components/TradeModal';
+
+describe('TradeModal Component', () => {
+  const mockStock = {
+    symbol: 'AAPL',
+    name: 'Apple Inc',
+    price: 150.00,
+    change: 2.50,
+    changePercent: 1.67
+  };
+
+  const mockOnClose = jest.fn();
+  const mockOnTrade = jest.fn();
+
+  beforeEach(() => {
+    mockOnClose.mockClear();
+    mockOnTrade.mockClear();
+  });
+
+  test('renders trade modal with stock information', () => {
+    render(
+      <TradeModal
+        stock={mockStock}
+        onClose={mockOnClose}
+        onTrade={mockOnTrade}
+      />
+    );
+
+    expect(screen.getByText(mockStock.name)).toBeInTheDocument();
+    expect(screen.getByText(mockStock.symbol)).toBeInTheDocument();
+  });
+
+  test('handles modal close', () => {
+    render(
+      <TradeModal
+        stock={mockStock}
+        onClose={mockOnClose}
+        onTrade={mockOnTrade}
+      />
+    );
+
+    const closeButton = screen.getByRole('button', { name: 'Close' });
+    fireEvent.click(closeButton);
+    expect(mockOnClose).toHaveBeenCalled();
+  });
+
+  test('handles trade submission', () => {
+    render(
+      <TradeModal
+        stock={mockStock}
+        onClose={mockOnClose}
+        onTrade={mockOnTrade}
+      />
+    );
+
+    const quantityInput = screen.getByTestId('quantity-input');
+    fireEvent.change(quantityInput, { target: { value: '2' } });
+
+    const submitButton = screen.getByRole('button', { name: 'Buy' });
+    fireEvent.click(submitButton);
+
+    expect(mockOnTrade).toHaveBeenCalled();
+  });
+}); 
