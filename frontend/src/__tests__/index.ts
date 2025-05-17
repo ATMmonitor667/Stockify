@@ -1,2 +1,3 @@
 export * from './integration';
 export * from './e2e';
+export * from './integration';
