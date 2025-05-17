@@ -56,6 +56,17 @@ jobs:
       with:
         name: coverage-report
         path: frontend/coverage/
+        
+    - name: Create Build Artifact
+      run: |
+        cd frontend
+        zip -r ../build.zip .next public package.json package-lock.json
+        
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifact
+        path: build.zip
 
     - name: Install Vercel CLI
       run: npm install --global vercel@latest
