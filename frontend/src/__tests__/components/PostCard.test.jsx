@@ -1,11 +1,18 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import PostCard from '@/components/PostCard'
-import { setupMockUser, resetMocks, mockUser } from '../helpers/supabaseTestClient'
+import { useRouter } from 'next/router'
+import { useGlobalUser } from '@/config/UserContext'
 
-// Mock the router
-const mockPush = jest.fn()
-jest.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush })
+// Mock next/router
+jest.mock('next/router', () => ({
+  useRouter: () => ({
+    push: jest.fn()
+  })
+}))
+
+// Mock UserContext
+jest.mock('@/config/UserContext', () => ({
+  useGlobalUser: jest.fn()
 }))
 
 // Mock framer-motion
@@ -15,60 +22,154 @@ jest.mock('framer-motion', () => ({
   }
 }))
 
-// Mock the UserContext
-jest.mock('@/config/UserContext', () => ({
-  useGlobalUser: jest.fn()
-}))
-
-describe('PostCard', () => {
+describe('PostCard Component', () => {
   const mockPost = {
     id: 1,
-    content: 'Test post content',
-    author_name: 'Test User',
-    author_id: '123',
-    created_at: '2024-03-28T04:00:00Z'
-  }
-
-  const mockOnFollow = jest.fn()
+    author_id: 'user123',
+    author_name: 'John Doe',
+    content: 'This is a test post',
+    created_at: '2024-03-20T10:00:00Z',
+    likes: 5,
+    comments: 3
+  };
 
   beforeEach(() => {
-    resetMocks()
-    jest.clearAllMocks()
-    mockPush.mockClear()
-  })
+    useGlobalUser.mockReturnValue({ id: 'test-user' });
+  });
 
-  it('renders post content and author name', () => {
-    render(<PostCard post={mockPost} onFollow={mockOnFollow} />)
-    expect(screen.getByText('Test post content')).toBeInTheDocument()
-    expect(screen.getByText('Test User')).toBeInTheDocument()
-  })
+  test('renders post content correctly', () => {
+    render(
+      <PostCard 
+        post={mockPost}
+        onFollow={jest.fn()}
+        isFollowing={false}
+        showFollowButton={true}
+      />
+    );
 
-  it('renders follow button and handles click when logged in', () => {
-    const mockCurrentUser = { id: 'test-user' }
-    require('@/config/UserContext').useGlobalUser.mockReturnValue(mockCurrentUser)
-    
-    render(<PostCard post={mockPost} onFollow={mockOnFollow} />)
-    const followButton = screen.getByRole('button', { name: /follow/i })
-    fireEvent.click(followButton)
-    expect(mockOnFollow).toHaveBeenCalledWith(mockPost.author_id)
-  })
+    expect(screen.getByText('This is a test post')).toBeInTheDocument();
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+  });
 
-  it('shows "Your Post" when post is from current user', () => {
-    const mockCurrentUser = { id: '123' }  // Same ID as post.author_id
-    require('@/config/UserContext').useGlobalUser.mockReturnValue(mockCurrentUser)
-    
-    render(<PostCard post={mockPost} onFollow={mockOnFollow} />)
-    expect(screen.getByText('Your Post')).toBeInTheDocument()
-  })
+  test('shows follow button when not following', () => {
+    render(
+      <PostCard 
+        post={mockPost}
+        onFollow={jest.fn()}
+        isFollowing={false}
+        showFollowButton={true}
+      />
+    );
 
-  it('redirects to login when clicking follow while not logged in', () => {
-    require('@/config/UserContext').useGlobalUser.mockReturnValue(null)
+    expect(screen.getByRole('button', { name: 'Follow' })).toBeInTheDocument();
+  });
+
+  test('shows following button when following', () => {
+    render(
+      <PostCard 
+        post={mockPost}
+        onFollow={jest.fn()}
+        isFollowing={true}
+        showFollowButton={true}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Following' })).toBeInTheDocument();
+  });
+
+  test('calls onFollow when clicking follow button', () => {
+    const mockOnFollow = jest.fn();
+    render(
+      <PostCard 
+        post={mockPost}
+        onFollow={mockOnFollow}
+        isFollowing={false}
+        showFollowButton={true}
+      />
+    );
+
+    const followButton = screen.getByRole('button', { name: 'Follow' });
+    fireEvent.click(followButton);
+    expect(mockOnFollow).toHaveBeenCalledWith('user123');
+  });
+
+  test('shows "Your Post" when post is from current user', () => {
+    useGlobalUser.mockReturnValue({ id: 'user123' });
     
-    render(<PostCard post={mockPost} onFollow={mockOnFollow} />)
-    const followButton = screen.getByRole('button', { name: /follow/i })
-    fireEvent.click(followButton)
+    render(
+      <PostCard 
+        post={mockPost}
+        onFollow={jest.fn()}
+        isFollowing={false}
+        showFollowButton={true}
+      />
+    );
+
+    expect(screen.getByText('Your Post')).toBeInTheDocument();
+  });
+
+  test('redirects to login when clicking follow without being logged in', () => {
+    useGlobalUser.mockReturnValue(null);
+    const mockRouter = { push: jest.fn() };
+    jest.spyOn(require('next/router'), 'useRouter').mockReturnValue(mockRouter);
     
-    expect(mockPush).toHaveBeenCalledWith('/login?redirect=/posts')
-    expect(mockOnFollow).not.toHaveBeenCalled()
-  })
-}) 
+    render(
+      <PostCard 
+        post={mockPost}
+        onFollow={jest.fn()}
+        isFollowing={false}
+        showFollowButton={true}
+      />
+    );
+
+    const followButton = screen.getByRole('button', { name: 'Follow' });
+    fireEvent.click(followButton);
+    expect(mockRouter.push).toHaveBeenCalledWith('/login?redirect=/posts');
+  });
+
+  test('does not show follow button when showFollowButton is false', () => {
+    render(
+      <PostCard 
+        post={mockPost}
+        onFollow={jest.fn()}
+        isFollowing={false}
+        showFollowButton={false}
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: 'Follow' })).not.toBeInTheDocument();
+  });
+
+  test('formats time correctly', () => {
+    render(
+      <PostCard 
+        post={mockPost}
+        onFollow={jest.fn()}
+        isFollowing={false}
+        showFollowButton={true}
+      />
+    );
+
+    expect(screen.getByText(/Mar 20/)).toBeInTheDocument();
+  });
+
+  test('handles post with no likes or comments', () => {
+    const postWithoutInteractions = {
+      ...mockPost,
+      likes: 0,
+      comments: 0
+    };
+
+    render(
+      <PostCard 
+        post={postWithoutInteractions}
+        onFollow={jest.fn()}
+        isFollowing={false}
+        showFollowButton={true}
+      />
+    );
+
+    expect(screen.getByText('0')).toBeInTheDocument(); // likes
+    expect(screen.getByText('0')).toBeInTheDocument(); // comments
+  });
+}); 

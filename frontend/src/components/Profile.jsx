@@ -39,40 +39,43 @@ const Profile = () => {
   const [userPosts, setUserPosts] = useState([]);
   const [activeTab, setActiveTab] = useState('stocks');
   const [useDummyData, setUseDummyData] = useState(false);
+  const [error, setError] = useState(null);
 
   // Fetch actual user data
   useEffect(() => {
     const updatedStocks = [];
     const fetchUserData = async () => {
       setLoading(true);
+      setError(null);
       try {
         // Get current user
         const { data: { user } } = await supabase.auth.getUser();
         
         if (!user) {
-          // If not authenticated, show error state
           setLoading(false);
+          setError('User not authenticated');
           return;
         }
 
-         // Fetch profile data from Supabase
-         const { data: profileData, error: profileError } = await supabase
-           .from('profiles')
-           .select('*')
-           .eq('user_id', user.id)
-           .single();
+        // Fetch profile data from Supabase
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
 
-         if (profileError) {
-           console.error('Error fetching profile:', profileError);
-         } else if (profileData) {
-           setProfile(profileData);
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+          setError(profileError.message);
+        } else if (profileData) {
+          setProfile(profileData);
           
-           // Set some placeholder follower counts for now
-           setFollowersCount(Math.floor(Math.random() * 50) + 5);
-           setFollowingCount(Math.floor(Math.random() * 30) + 3);
-         }
+          // Set some placeholder follower counts for now
+          setFollowersCount(Math.floor(Math.random() * 50) + 5);
+          setFollowingCount(Math.floor(Math.random() * 30) + 3);
+        }
 
-         let hasRealData = false;
+        let hasRealData = false;
 
         // // In a real implementation, you would fetch both invested and followed stocks
         // // This is just placeholder code - update with your actual database queries
@@ -189,10 +192,7 @@ const Profile = () => {
         
       } catch (error) {
         console.error('Error in fetch user data:', error);
-        setUseDummyData(true);
-        setInvestedStocks(DUMMY_INVESTED_STOCKS);
-        setFollowedStocks(DUMMY_FOLLOWED_STOCKS);
-        setTradeHistory(DUMMY_TRADE_HISTORY);
+        setError(error.message);
       } finally {
         setLoading(false);
       }
@@ -236,7 +236,18 @@ const Profile = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div
+          data-testid="loading-spinner"
+          className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"
+        />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-red-500 text-center p-4">
+        Error loading profile. Please try again later.
       </div>
     );
   }
@@ -252,6 +263,7 @@ const Profile = () => {
       </div>
     );
   }
+
   console.log(investedStocks);
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
