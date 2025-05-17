@@ -4,6 +4,21 @@ const MAX_RETRIES = 2;
 const RETRY_DELAY = 100;
 const CACHE_DURATION = 60000; // 1 minute cache duration
 
+export async function getStockCandles(symbol, resolution, from, to) {
+  const url = new URL(`${API_BASE_URL}stock/candle`);
+  url.searchParams.append("symbol", symbol);
+  url.searchParams.append("resolution", resolution);
+  url.searchParams.append("from", from);
+  url.searchParams.append("to", to);
+  url.searchParams.append("token", API_KEY);
+
+  const response = await fetch(url.toString());
+  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  const data = await response.json();
+  if (data.s === 'ok') return data;
+  return null;
+}
+
 // Enhanced in-memory cache with prefetch support
 const cache = {
   data: {},
