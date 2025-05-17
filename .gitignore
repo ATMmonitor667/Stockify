@@ -35,4 +35,8 @@ yarn-debug.log*
 yarn-error.log*
 
 # Local Netlify folder
-.netlify 
+.netlify
+
+# Vercel
+.vercel
+.vercel/output 
