@@ -38,5 +38,5 @@ yarn-error.log*
 .netlify
 
 # Vercel
-.vercel
-.vercel/output 
+.vercel/output/*
+!.vercel/output/config.json 
