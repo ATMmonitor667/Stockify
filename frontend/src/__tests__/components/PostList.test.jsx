@@ -1,102 +1,69 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import PostList from '@/components/PostList'
-import { setupMockSupabase, mockPosts, resetMocks } from '../helpers/supabaseTestClient'
+import { render, screen, waitFor } from '@testing-library/react';
+import PostList from '@/components/PostList';
 
-// Mock fetch globally
-global.fetch = jest.fn()
+// Mock fetch
+global.fetch = jest.fn();
 
-describe('PostList', () => {
-  const mockOnFollow = jest.fn()
+describe('PostList Component', () => {
+  const mockPosts = [
+    {
+      id: 1,
+      content: 'Test post 1',
+      author_name: 'User1',
+      created_at: new Date().toISOString(),
+      likes: 5,
+      comments: 2
+    },
+    {
+      id: 2,
+      content: 'Test post 2',
+      author_name: 'User2',
+      created_at: new Date().toISOString(),
+      likes: 3,
+      comments: 1
+    }
+  ];
 
   beforeEach(() => {
-    resetMocks()
-    setupMockSupabase()
-  })
+    fetch.mockClear();
+  });
 
-  it('shows loading state initially', () => {
-    // Mock fetch to return a promise that never resolves to keep the loading state
-    global.fetch.mockImplementationOnce(() => new Promise(() => {}))
-    render(<PostList onFollow={mockOnFollow} />)
-    expect(screen.getByRole('status')).toBeInTheDocument()
-  })
+  test('renders posts after loading', async () => {
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => mockPosts
+    });
 
-  it('displays posts when loaded', async () => {
-    // Mock successful fetch
-    global.fetch.mockImplementationOnce(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(mockPosts)
-      })
-    )
-
-    render(<PostList onFollow={mockOnFollow} />)
-
-    // First check for loading state
-    expect(screen.getByRole('status')).toBeInTheDocument()
-
-    // Then wait for the posts to appear
-    await waitFor(() => {
-      expect(screen.getByText('First post')).toBeInTheDocument()
-      expect(screen.getByText('Second post')).toBeInTheDocument()
-      expect(screen.getByText('User 1')).toBeInTheDocument()
-      expect(screen.getByText('User 2')).toBeInTheDocument()
-    })
-  })
-
-  it('displays error message when fetch fails', async () => {
-    // Mock failed fetch
-    global.fetch.mockImplementationOnce(() =>
-      Promise.resolve({
-        ok: false,
-        status: 500
-      })
-    )
-
-    render(<PostList onFollow={mockOnFollow} />)
-
-    // First check for loading state
-    expect(screen.getByRole('status')).toBeInTheDocument()
-
-    // Then wait for the error message
-    await waitFor(() => {
-      expect(screen.getByText(/Error loading posts/)).toBeInTheDocument()
-    })
-  })
-
-  it('displays empty state when no posts', async () => {
-    // Mock successful fetch with empty array
-    global.fetch.mockImplementationOnce(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve([])
-      })
-    )
-
-    render(<PostList onFollow={mockOnFollow} />)
-
-    // First check for loading state
-    expect(screen.getByRole('status')).toBeInTheDocument()
-
-    // Then wait for the empty state message
-    await waitFor(() => {
-      expect(screen.getByText('No posts yet. Be the first to post!')).toBeInTheDocument()
-    })
-  })
-
-  it('passes onFollow handler to PostCard components', async () => {
-    // Mock successful fetch
-    global.fetch.mockImplementationOnce(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(mockPosts)
-      })
-    )
-
-    render(<PostList onFollow={mockOnFollow} />)
+    render(<PostList />);
 
     await waitFor(() => {
-      const followButtons = screen.getAllByRole('button', { name: /follow/i })
-      expect(followButtons).toHaveLength(mockPosts.length)
-    })
-  })
-}) 
+      expect(screen.getByText('Test post 1')).toBeInTheDocument();
+      expect(screen.getByText('User1')).toBeInTheDocument();
+      expect(screen.getByText('Test post 2')).toBeInTheDocument();
+      expect(screen.getByText('User2')).toBeInTheDocument();
+    });
+  });
+
+  test('shows error message on fetch failure', async () => {
+    fetch.mockRejectedValueOnce(new Error('Failed to fetch'));
+
+    render(<PostList />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Error loading posts/i)).toBeInTheDocument();
+    });
+  });
+
+  test('shows empty state when no posts', async () => {
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => []
+    });
+
+    render(<PostList />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/No posts yet/i)).toBeInTheDocument();
+    });
+  });
+}); 

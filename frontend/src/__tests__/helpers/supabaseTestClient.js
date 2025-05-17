@@ -43,17 +43,13 @@ export const setupMockSupabase = () => {
   }));
 };
 
-export const setupMockUser = (isLoggedIn = true) => {
+export const setupMockUser = () => {
   jest.mock('@/config/UserContext', () => ({
-    useGlobalUser: jest.fn().mockReturnValue(isLoggedIn ? mockUser : null)
+    useGlobalUser: jest.fn().mockReturnValue(mockUser)
   }));
 };
 
 // Reset all mocks
 export const resetMocks = () => {
-  jest.clearAllMocks();
-  mockSupabase.from.mockClear();
-  mockSupabase.auth.getUser.mockClear();
-  mockSupabase.auth.signIn.mockClear();
-  mockSupabase.auth.signOut.mockClear();
+  jest.resetAllMocks();
 }; 
